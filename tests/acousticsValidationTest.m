@@ -1,0 +1,158 @@
+function tests = acousticsValidationTest()
+%ACOUSTICSVALIDATIONTEST  Validate the +acoustics library against the
+%   MECH9325 worked answers.
+%
+%   Run from the repository root with:
+%       runtests('tests')
+%   or
+%       results = run(acousticsValidationTest);
+%
+%   Each test asserts one of the course's known worked results so the
+%   toolkit can be trusted before use.
+    tests = functiontests(localfunctions);
+end
+
+% ---- reference levels / powers / intensity ------------------------------
+
+function testOnePascalIs94dB(t)
+    % 1 Pa RMS -> 94 dB SPL (re 2e-5 Pa)
+    R = acoustics.splPressure('p', 1);
+    verifyEqual(t, R.Lp, 93.9794, 'AbsTol', 0.01);
+    verifyEqual(t, round(R.Lp), 94);
+end
+
+function testHalfWattIs117dB(t)
+    % 0.5 W -> 117 dB Lw (re 1e-12 W)
+    R = acoustics.powerLevel('W', 0.5);
+    verifyEqual(t, R.Lw, 116.9897, 'AbsTol', 0.01);
+    verifyEqual(t, round(R.Lw), 117);
+end
+
+function testPowerLevelRoundTrip(t)
+    R = acoustics.powerLevel('Lw', 117);
+    R2 = acoustics.powerLevel('W', R.W);
+    verifyEqual(t, R2.Lw, 117, 'AbsTol', 1e-9);
+end
+
+% ---- waves --------------------------------------------------------------
+
+function testSpeedOfSoundAt20C(t)
+    % c(20 C) = 343 m/s
+    R = acoustics.speedOfSoundTemp(20);
+    verifyEqual(t, R.c, 343.23, 'AbsTol', 0.05);
+    verifyEqual(t, round(R.c), 343);
+end
+
+function testWaveSolvesLambda(t)
+    R = acoustics.waveRelation('c', 343, 'f', 1000);
+    verifyEqual(t, R.lambda, 0.343, 'AbsTol', 1e-6);
+end
+
+% ---- weighting: overall dB(A) = 77.5 ------------------------------------
+
+function testAWeightedTotalIs77p5(t)
+    % Octave-band spectrum whose A-weighted overall level is 77.5 dB(A).
+    f = [63 125 250 500 1000 2000 4000 8000];
+    L = [70  72  74  76  70.4 71   66   60];
+    R = acoustics.weightedOverall(f, L, 'A');
+    verifyEqual(t, R.weighted, 77.5, 'AbsTol', 0.05);
+end
+
+% ---- Leq: LAeq,24h = 70.55 ---------------------------------------------
+
+function testLAeq24hIs70p55(t)
+    % 74 dB(A) for 8 h, 69 for 8 h, 60 for 8 h, averaged over 24 h.
+    levels    = [74 69 60];
+    durations = [8 8 8] * 3600;          % seconds
+    R = acoustics.leqFromLevels(levels, durations, 'T', 24*3600);
+    verifyEqual(t, R.Leq, 70.55, 'AbsTol', 0.01);
+end
+
+function testLeqSELConsistency(t)
+    % SEL = Leq + 10 log10(T)
+    R = acoustics.leqFromLevels([90 90], [30 30], 'T', 60);
+    verifyEqual(t, R.SEL, R.Leq + 10*log10(60), 'AbsTol', 1e-9);
+end
+
+% ---- loudness: 16 sones -------------------------------------------------
+
+function testEightyPhonIs16Sones(t)
+    R = acoustics.phonToSone(80);
+    verifyEqual(t, R.sones, 16, 'AbsTol', 1e-9);
+end
+
+function testSonePhonRoundTrip(t)
+    verifyEqual(t, acoustics.soneToPhon(16).phons, 80, 'AbsTol', 1e-9);
+end
+
+% ---- insulation: plywood mass-law TL = 21 dB @ 1 kHz --------------------
+
+function testPlywoodMassLawTLis21(t)
+    % Plywood 3 mm at 500 kg/m^3 -> M = 1.5 kg/m^2, TL = 20log10(Mf)-42.4
+    R = acoustics.massLawTL(1000, 'density', 500, 'thickness_mm', 3);
+    verifyEqual(t, R.M, 1.5, 'AbsTol', 1e-9);
+    verifyEqual(t, round(R.TL), 21);
+    verifyEqual(t, R.TL, 21.12, 'AbsTol', 0.05);
+end
+
+% ---- speech: ship engine-room example -----------------------------------
+
+function testShipEngineRoomSIL(t)
+    % SIL = 103.67 dB from the four octave-band levels
+    R = acoustics.speechInterferenceLevel([105 104 103 102.68]);
+    verifyEqual(t, R.SIL, 103.67, 'AbsTol', 0.01);
+end
+
+function testShipEngineRoomVoiceLevel(t)
+    % VL_A = (4/3)(SIL + 20log10 r) - 36 at r = 1 m -> 102.2 dB(A)
+    R = acoustics.voiceLevelA(103.67, 1);
+    verifyEqual(t, R.VLA, 102.2, 'AbsTol', 0.05);
+end
+
+function testShipEngineRoomCommunicationNotPossible(t)
+    % VL_A > 88 dB(A) peak-shouting limit -> communication not possible
+    R = acoustics.voiceLevelA(103.67, 1);
+    verifyFalse(t, R.possible);
+    verifyEqual(t, R.effort, 'Beyond peak shouting');
+end
+
+function testVoiceLevelPossibleCase(t)
+    % A quiet interference level should be reachable with a normal voice.
+    R = acoustics.voiceLevelA(52.5, 1);   % VL_A = (4/3)*52.5 - 36 = 34
+    verifyTrue(t, R.possible);
+    verifyEqual(t, R.effort, 'Normal');
+end
+
+% ---- a few structural checks on the wider library -----------------------
+
+function testCombineThreeLevels(t)
+    % 80 + 80 = 83.01; adding 74 -> 83.43
+    verifyEqual(t, acoustics.combineLevels([80 80]).total, 83.0103, 'AbsTol', 0.01);
+    verifyEqual(t, acoustics.combineLevels([80 80 74]).total, 83.5241, 'AbsTol', 0.01);
+end
+
+function testSabineSolvesEachTerm(t)
+    base = acoustics.sabineT60('V', 200, 'S', 240, 'alpha', 0.15);
+    % Feed T60 back and solve for alpha -> recover 0.15
+    R = acoustics.sabineT60('V', 200, 'S', 240, 'T60', base.T60);
+    verifyEqual(t, R.alpha, 0.15, 'AbsTol', 1e-9);
+end
+
+function testSubtractBackground(t)
+    % 80 dB total minus 77 dB background -> 76.98 dB remaining
+    R = acoustics.subtractLevels(80, 77);
+    verifyEqual(t, R.remaining, 76.9794, 'AbsTol', 0.01);
+end
+
+function testDistancePointAndLine(t)
+    % Doubling distance: point -6 dB, line -3 dB
+    R = acoustics.distanceAttenuation(100, 1, 2);
+    verifyEqual(t, R.point, 100 - 20*log10(2), 'AbsTol', 1e-9);
+    verifyEqual(t, R.line,  100 - 10*log10(2), 'AbsTol', 1e-9);
+end
+
+function testRadiatedPower(t)
+    % I over a full sphere at r with Q=1
+    R = acoustics.radiatedPower(1e-6, 2, 'Q', 1);
+    verifyEqual(t, R.W, 1e-6*4*pi*4, 'RelTol', 1e-9);
+end

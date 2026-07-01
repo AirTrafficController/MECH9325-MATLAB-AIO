@@ -14,6 +14,12 @@ classdef AcousticsApp < handle
     %   Every calculator prints the full working (formulae + substituted
     %   numbers) so it doubles as a hand-calculation checker.
     %
+    %   The numerical work is delegated to the +acoustics function library
+    %   (one .m file per formula), so every result shown here can also be
+    %   reproduced from the command line, e.g.  acoustics.splPressure('p',1).
+    %   The +acoustics package folder must be on the MATLAB path (it sits
+    %   next to this file, so running from the repo root is enough).
+    %
     %   No toolboxes required (base MATLAB R2018b+ for uifigure +
     %   uigridlayout).
 
@@ -41,7 +47,7 @@ classdef AcousticsApp < handle
 
     methods
         function app = AcousticsApp()
-            app.WTAB = acousticsData();
+            app.WTAB = acoustics.weightingTable();
             app.THIRD = app.WTAB(:,1);
             app.OCTMAIN = [63 125 250 500 1000 2000 4000 8000]';
             app.OCTFULL = [31.5 63 125 250 500 1000 2000 4000 8000 16000]';
@@ -234,18 +240,13 @@ classdef AcousticsApp < handle
             if ~isempty(strtrim(app.W.p.Value))
                 p = app.pnum(app.W.p);
                 if ~(p > 0), app.W.out.Value = {'Pressure must be > 0.'}; return; end
-                Lp = 20*log10(p/app.PREF); app.W.lp.Value = sprintf('%.2f',Lp);
-                app.W.out.Value = { sprintf('Lp = %.2f dB', Lp), '', 'WORKING', ...
-                    'Lp = 20*log10(p / p_ref)', ...
-                    sprintf('= 20*log10(%.4g / 2e-5) = 20*log10(%.4g)', p, p/app.PREF), ...
-                    sprintf('= %.2f dB', Lp) };
+                R = acoustics.splPressure('p',p); app.W.lp.Value = sprintf('%.2f',R.Lp);
             else
-                Lp = app.pnum(app.W.lp); p = app.PREF*10^(Lp/20); app.W.p.Value = sprintf('%.4g',p);
-                app.W.out.Value = { sprintf('p_rms = %.4g Pa', p), '', 'WORKING', ...
-                    'p = p_ref * 10^(Lp/20)', ...
-                    sprintf('= 2e-5 * 10^(%.4g/20) = 2e-5 * %.4g', Lp, 10^(Lp/20)), ...
-                    sprintf('= %.4g Pa', p) };
+                R = acoustics.splPressure('Lp',app.pnum(app.W.lp));
+                app.W.p.Value = sprintf('%.4g',R.p);
             end
+            app.W.out.Value = [{ sprintf('Lp = %.2f dB · p_rms = %.4g Pa', R.Lp, R.p), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildLwConv(app)
@@ -258,17 +259,15 @@ classdef AcousticsApp < handle
         end
         function runLwConv(app)
             if ~isempty(strtrim(app.W.Lw.Value))
-                L = app.pnum(app.W.Lw); Wp = app.WREF*10^(L/10); app.W.W.Value = sprintf('%.4g',Wp);
-                app.W.out.Value = { sprintf('W = %.4g W', Wp), '', 'WORKING', ...
-                    sprintf('W = W_ref * 10^(Lw/10) = 1e-12 * 10^(%.4g/10) = %.4g W', L, Wp) };
+                R = acoustics.powerLevel('Lw',app.pnum(app.W.Lw));
+                app.W.W.Value = sprintf('%.4g',R.W);
             else
                 Wp = app.pnum(app.W.W);
                 if ~(Wp > 0), app.W.out.Value = {'Power must be > 0.'}; return; end
-                L = 10*log10(Wp/app.WREF); app.W.Lw.Value = sprintf('%.2f',L);
-                app.W.out.Value = { sprintf('Lw = %.2f dB', L), '', 'WORKING', ...
-                    'Lw = 10*log10(W / W_ref)', ...
-                    sprintf('= 10*log10(%.4g / 1e-12) = %.2f dB', Wp, L) };
+                R = acoustics.powerLevel('W',Wp); app.W.Lw.Value = sprintf('%.2f',R.Lw);
             end
+            app.W.out.Value = [{ sprintf('Lw = %.2f dB · W = %.4g W', R.Lw, R.W), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildLI(app)
@@ -280,17 +279,17 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,5);
         end
         function runLI(app)
-            steps = {};
             if ~isempty(strtrim(app.W.p.Value))
-                p = app.pnum(app.W.p); I = p^2/app.RHOC;
-                steps{end+1} = sprintf('I = p_rms^2 / (rho c) = %.4g^2 / %g = %.4g W/m^2', p, app.RHOC, I);
+                p = app.pnum(app.W.p);
+                if ~(p > 0), app.W.out.Value = {'Pressure must be > 0.'}; return; end
+                R = acoustics.intensityLevel('p',p);
             else
                 I = app.pnum(app.W.I);
+                if ~(I > 0), app.W.out.Value = {'Enter intensity or pressure.'}; return; end
+                R = acoustics.intensityLevel('I',I);
             end
-            if ~(I > 0), app.W.out.Value = {'Enter intensity or pressure.'}; return; end
-            LI = 10*log10(I/app.IREF);
-            steps{end+1} = sprintf('LI = 10*log10(I / I_ref) = 10*log10(%.4g / 1e-12) = %.2f dB', I, LI);
-            app.W.out.Value = [{ sprintf('I = %.4g W/m^2', I), sprintf('LI = %.2f dB', LI), '', 'WORKING' }, steps];
+            app.W.out.Value = [{ sprintf('I = %.4g W/m^2 · LI = %.2f dB', R.I, R.LI), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildRMS(app)
@@ -306,17 +305,14 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,7);
         end
         function runRMS(app)
-            P = app.W.P.Value; prms = P/sqrt(2);
-            out = { sprintf('p_rms (from peak) = %.4g Pa  ->  SPL = %.2f dB', prms, 20*log10(prms/app.PREF)) };
             ps = app.parseCol(app.W.list.Value);
+            R = acoustics.peakToRms(app.W.P.Value, ps);
+            lines = { sprintf('p_rms (from peak) = %.4g Pa  ->  SPL = %.2f dB', R.prms, R.splRms) };
             if ~isempty(ps)
-                sumSq = sum(ps.^2); tot = sqrt(sumSq);
-                terms = strjoin(arrayfun(@(x) sprintf('%.4g^2',x), ps, 'UniformOutput',false), ' + ');
-                out = [out, { sprintf('p_tot (combined) = %.4g Pa  ->  SPL = %.2f dB', tot, 20*log10(tot/app.PREF)), ...
-                    '', 'WORKING', 'p_tot = sqrt( sum p_i^2 )', ...
-                    sprintf('= sqrt( %s ) = sqrt(%.4g) = %.4g Pa', terms, sumSq, tot) }];
+                lines{end+1} = sprintf('p_tot (combined) = %.4g Pa  ->  SPL = %.2f dB', ...
+                    R.ptot, R.splTot);
             end
-            app.W.out.Value = out;
+            app.W.out.Value = [lines, {'', 'WORKING'}, R.steps];
         end
 
         function buildPSD(app)
@@ -333,14 +329,9 @@ classdef AcousticsApp < handle
             f1=app.W.f1.Value; f2=app.W.f2.Value; s1=app.W.s1.Value; s2=app.W.s2.Value;
             if ~(f2 > f1), app.W.out.Value = {'Upper frequency must exceed lower frequency.'}; return; end
             if s1<0 || s2<0, app.W.out.Value = {'PSD values must be >= 0.'}; return; end
-            bw=f2-f1; ms=(s1+s2)/2*bw; prms=sqrt(ms); spl=20*log10(prms/app.PREF);
-            app.W.out.Value = { sprintf('Mean-square p^2 = %.4g Pa^2', ms), ...
-                sprintf('p_rms = %.4g Pa', prms), sprintf('SPL = %.2f dB', spl), ...
-                '', 'WORKING', ...
-                sprintf('p_rms^2 = 1/2 (S1+S2)(f2-f1) = 1/2 (%.4g + %.4g)(%.4g)', s1, s2, bw), ...
-                sprintf('= %.4g Pa^2', ms), ...
-                sprintf('p_rms = sqrt(%.4g) = %.4g Pa', ms, prms), ...
-                sprintf('SPL = 20*log10(%.4g / 2e-5) = %.2f dB', prms, spl) };
+            R = acoustics.psdToRms(f1, f2, s1, s2);
+            app.W.out.Value = [{ sprintf('Mean-square p^2 = %.4g Pa^2 · p_rms = %.4g Pa · SPL = %.2f dB', ...
+                R.meanSquare, R.prms, R.spl), '', 'WORKING' }, R.steps];
         end
 
         % ================= COMBINE =================
@@ -355,13 +346,9 @@ classdef AcousticsApp < handle
         function runCombine(app)
             L = app.parseCol(app.W.txt.Value);
             if isempty(L), app.W.out.Value = {'Enter at least one level.'}; return; end
-            e = 10.^(L/10); s = sum(e); tot = 10*log10(s); p = app.PREF*10^(tot/20);
-            terms = strjoin(arrayfun(@(x) sprintf('10^(%.4g/10)',x), L, 'UniformOutput',false), ' + ');
-            app.W.out.Value = { sprintf('Combined level = %.2f dB', tot), ...
-                sprintf('RMS pressure   = %.4g Pa', p), '', 'WORKING', ...
-                'L_tot = 10*log10( sum 10^(Li/10) )', ...
-                sprintf('= 10*log10( %s )', terms), ...
-                sprintf('= 10*log10( %.5g ) = %.2f dB', s, tot) };
+            R = acoustics.combineLevels(L);
+            app.W.out.Value = [{ sprintf('Combined level = %.2f dB · RMS pressure = %.4g Pa', ...
+                R.total, R.pressure), '', 'WORKING' }, R.steps];
         end
 
         function buildNIdentical(app)
@@ -372,12 +359,11 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,4);
         end
         function runNIdentical(app)
-            L1 = app.W.L1.Value; N = app.W.N.Value;
+            N = app.W.N.Value;
             if N < 1, app.W.out.Value = {'N must be >= 1.'}; return; end
-            tot = L1 + 10*log10(N);
-            app.W.out.Value = { sprintf('Total of %g sources = %.2f dB', N, tot), ...
-                '', 'WORKING', 'L_tot = L1 + 10*log10(N)', ...
-                sprintf('= %.4g + 10*log10(%g) = %.4g + %.4g = %.2f dB', L1, N, L1, 10*log10(N), tot) };
+            R = acoustics.nIdenticalSources(app.W.L1.Value, N);
+            app.W.out.Value = [{ sprintf('Total of %g sources = %.2f dB', N, R.total), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildIncrease(app)
@@ -389,13 +375,11 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,5);
         end
         function runIncrease(app)
-            n1=app.W.n1.Value; L1=app.W.L1.Value; add=app.W.add.Value; n2=n1+add;
-            if ~(n1>0) || ~(n2>0), app.W.out.Value = {'Counts must be positive.'}; return; end
-            dL=10*log10(n2/n1); nl=L1+dL;
-            app.W.out.Value = { sprintf('Increase dL = %.3f dB', dL), sprintf('New level = %.3f dB', nl), ...
-                '', 'WORKING', sprintf('N2 = N1 + added = %g + %g = %g', n1, add, n2), ...
-                sprintf('dL = 10*log10(N2/N1) = 10*log10(%g) = %.3f dB', n2/n1, dL), ...
-                sprintf('L_new = L1 + dL = %.4g + %.3f = %.3f dB', L1, dL, nl) };
+            n1=app.W.n1.Value; add=app.W.add.Value;
+            if ~(n1>0) || ~(n1+add>0), app.W.out.Value = {'Counts must be positive.'}; return; end
+            R = acoustics.increaseFromSources(n1, app.W.L1.Value, add);
+            app.W.out.Value = [{ sprintf('Increase dL = %.3f dB · New level = %.3f dB', ...
+                R.delta, R.newLevel), '', 'WORKING' }, R.steps];
         end
 
         function buildLargerError(app)
@@ -416,13 +400,10 @@ classdef AcousticsApp < handle
                 r = p2/p1;
             end
             if r>1, app.W.out.Value = {'Ratio should be <= 1 (p2 is the smaller signal).'}; return; end
-            ptot=sqrt(1+r*r); err=(1/ptot-1)*100;
-            app.W.out.Value = { sprintf('Total RMS = %.5g x p1', ptot), ...
-                sprintf('Error using only p1 = %.2f %% (under-estimate)', err), ...
-                '', 'WORKING', sprintf('r = p2/p1 = %.4g', r), ...
-                sprintf('p_tot = p1*sqrt(1 + r^2) = p1*sqrt(1 + %.4g) = %.5g*p1', r*r, ptot), ...
-                'Error = 1/sqrt(1 + r^2) - 1', ...
-                sprintf('= 1/%.5g - 1 = %.2f %%', ptot, err) };
+            R = acoustics.largerSignalError(r);
+            app.W.out.Value = [{ sprintf('Total RMS = %.5g x p1', R.ptotFactor), ...
+                sprintf('Error using only p1 = %.2f %% (under-estimate)', R.errorPct), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildMaxSources(app)
@@ -434,17 +415,12 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,5);
         end
         function runMaxSources(app)
-            N1=app.W.N1.Value; L1=app.W.Lt.Value; Lmax=app.W.Lm.Value;
+            N1=app.W.N1.Value;
             if ~(N1>=1), app.W.out.Value = {'N1 must be >= 1.'}; return; end
-            per=L1-10*log10(N1); Nexact=N1*10^((Lmax-L1)/10); N=floor(Nexact+1e-9);
-            if N<1, app.W.out.Value = {sprintf('Even one source (%.2f dB) exceeds the %.4g dB limit.',per,Lmax)}; return; end
-            Ln=L1+10*log10(N/N1); Ln1=L1+10*log10((N+1)/N1);
-            app.W.out.Value = { sprintf('Max sources within limit = %d', N), ...
-                sprintf('Level at %d = %.2f dB (<= %.4g, ok) · at %d = %.2f dB (over)', N, Ln, Lmax, N+1, Ln1), ...
-                '', 'WORKING', ...
-                sprintf('One source: L1 = Ltot - 10*log10(N1) = %.4g - 10*log10(%g) = %.2f dB', L1, N1, per), ...
-                'N <= N1 * 10^((Lmax - Ltot)/10)', ...
-                sprintf('= %g * 10^((%.4g - %.4g)/10) = %.3f  -> round down = %d', N1, Lmax, L1, Nexact, N) };
+            R = acoustics.maxSourcesUnderLimit(N1, app.W.Lt.Value, app.W.Lm.Value);
+            if R.N<1, app.W.out.Value = R.steps; return; end
+            app.W.out.Value = [{ sprintf('Max sources within limit = %d', R.N), ...
+                '', 'WORKING' }, R.steps];
         end
 
         % ================= SUBTRACT =================
@@ -456,13 +432,13 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,4);
         end
         function runSubtract(app)
-            tot=app.W.tot.Value; bg=app.W.bg.Value; diff=10^(tot/10)-10^(bg/10);
-            if diff<=0, app.W.out.Value = {'Total must exceed the level being removed.'}; return; end
-            rem=10*log10(diff);
-            app.W.out.Value = { sprintf('Remaining level = %.2f dB', rem), '', 'WORKING', ...
-                'L_rem = 10*log10( 10^(Ltot/10) - 10^(Lbg/10) )', ...
-                sprintf('= 10*log10( %.4g - %.4g ) = 10*log10( %.4g )', 10^(tot/10), 10^(bg/10), diff), ...
-                sprintf('= %.2f dB', rem) };
+            tot=app.W.tot.Value; bg=app.W.bg.Value;
+            if 10^(tot/10)-10^(bg/10) <= 0
+                app.W.out.Value = {'Total must exceed the level being removed.'}; return;
+            end
+            R = acoustics.subtractLevels(tot, bg);
+            app.W.out.Value = [{ sprintf('Remaining level = %.2f dB', R.remaining), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildOneOfN(app)
@@ -473,12 +449,10 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,4);
         end
         function runOneOfN(app)
-            tot=app.W.tot.Value; N=app.W.N.Value;
+            N=app.W.N.Value;
             if ~(N>=1), app.W.out.Value = {'N must be >= 1.'}; return; end
-            one=tot-10*log10(N);
-            app.W.out.Value = { sprintf('Each source = %.2f dB', one), '', 'WORKING', ...
-                'L1 = Ltot - 10*log10(N)', ...
-                sprintf('= %.4g - 10*log10(%g) = %.4g - %.4g = %.2f dB', tot, N, tot, 10*log10(N), one) };
+            R = acoustics.oneOfNSources(app.W.tot.Value, N);
+            app.W.out.Value = [{ sprintf('Each source = %.2f dB', R.each), '', 'WORKING' }, R.steps];
         end
 
         % ================= WAVES =================
@@ -492,14 +466,14 @@ classdef AcousticsApp < handle
         end
         function runWave(app)
             c=app.pnum(app.W.c); f=app.pnum(app.W.f); lam=app.pnum(app.W.lam);
-            known = ~isnan(c) + ~isnan(f) + ~isnan(lam);
-            if known < 2, app.W.out.Value = {'Enter at least two of c, f, lambda.'}; return; end
-            if isnan(c), c=f*lam; elseif isnan(f), f=c/lam; elseif isnan(lam), lam=c/f; end
-            app.W.c.Value=sprintf('%.3f',c); app.W.f.Value=sprintf('%.3f',f); app.W.lam.Value=sprintf('%.4f',lam);
-            w=2*pi*f; k=2*pi/lam;
-            app.W.out.Value = { sprintf('c = %.2f m/s · f = %.2f Hz · lambda = %.4f m', c, f, lam), ...
-                sprintf('T = 1/f = %.4g s', 1/f), sprintf('omega = 2*pi*f = %.1f rad/s', w), ...
-                sprintf('k = 2*pi/lambda = %.3f rad/m', k) };
+            if (~isnan(c))+(~isnan(f))+(~isnan(lam)) < 2
+                app.W.out.Value = {'Enter at least two of c, f, lambda.'}; return;
+            end
+            R = acoustics.waveRelation('c',c,'f',f,'lambda',lam);
+            app.W.c.Value=sprintf('%.3f',R.c); app.W.f.Value=sprintf('%.3f',R.f);
+            app.W.lam.Value=sprintf('%.4f',R.lambda);
+            app.W.out.Value = [{ sprintf('c = %.2f m/s · f = %.2f Hz · lambda = %.4f m', ...
+                R.c, R.f, R.lambda), '', 'WORKING' }, R.steps];
         end
 
         function buildSOS(app)
@@ -511,10 +485,10 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,5);
         end
         function runSOS(app)
-            Tc=app.W.T.Value; R=app.W.R.Value; g=app.W.g.Value; T0=Tc+273.2; c=sqrt(g*R*T0);
-            app.W.out.Value = { sprintf('T0 = %.1f K', T0), ...
-                sprintf('c = sqrt(gamma*R*T0) = sqrt(%g*%g*%.1f) = %.2f m/s', g, R, T0, c), ...
-                sprintf('Air shortcut 20.06*sqrt(T0) = %.2f m/s', 20.06*sqrt(T0)) };
+            R = acoustics.speedOfSoundTemp(app.W.T.Value, ...
+                'gamma',app.W.g.Value, 'R',app.W.R.Value);
+            app.W.out.Value = [{ sprintf('c = %.2f m/s  (T0 = %.1f K)', R.c, R.T0), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildParticle(app)
@@ -526,11 +500,9 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,5);
         end
         function runParticle(app)
-            P=app.W.P.Value; f=app.W.f.Value; rc=app.W.rc.Value;
-            w=2*pi*f; u=P/rc; xi=u/w; I=P^2/(2*rc);
-            app.W.out.Value = { sprintf('Particle velocity u = P/rhoc = %.4g m/s', u), ...
-                sprintf('Displacement xi = u/omega = %.4g m', xi), ...
-                sprintf('Intensity I = P^2/(2 rhoc) = %.4g W/m^2', I) };
+            R = acoustics.particleMotion(app.W.P.Value, app.W.f.Value, 'rhoc',app.W.rc.Value);
+            app.W.out.Value = [{ sprintf('u = %.4g m/s · xi = %.4g m · I = %.4g W/m^2', ...
+                R.u, R.xi, R.I), '', 'WORKING' }, R.steps];
         end
 
         function buildBandEdges(app)
@@ -549,22 +521,16 @@ classdef AcousticsApp < handle
         function runBandEdges(app)
             fc=app.W.fc.Value;
             if ~(fc>0), app.W.out.Value = {'Centre frequency must be > 0.'}; return; end
-            third = strcmp(app.W.ty.Value,'1/3 Octave');
-            if third, k=2^(1/6); ks='2^(1/6)'; nm='one-third octave'; ref='23.1';
-            else, k=sqrt(2); ks='sqrt(2)'; nm='octave'; ref='70.7'; end
-            lower=fc/k; upper=fc*k; bw=upper-lower; pct=bw/fc*100;
-            app.W.out.Value = { sprintf('Lower = %.1f Hz · Upper = %.1f Hz', lower, upper), ...
-                sprintf('Bandwidth = %.1f Hz · %% bandwidth = %.1f %%', bw, pct), ...
-                '', 'WORKING', sprintf('f_lower = fc/%s, f_upper = fc*%s', ks, ks), ...
-                sprintf('BW = %.1f - %.1f = %.1f Hz', upper, lower, bw), ...
-                sprintf('%%BW = BW/fc*100 = %.1f %% (constant -> %s ~ %s %%)', pct, nm, ref) };
+            ty='octave'; if strcmp(app.W.ty.Value,'1/3 Octave'), ty='third'; end
+            R = acoustics.octaveBandEdges(fc,'type',ty);
+            app.W.out.Value = [{ sprintf('Lower = %.1f Hz · Upper = %.1f Hz · BW = %.1f Hz (%.1f %%)', ...
+                R.lower, R.upper, R.bandwidth, R.percent), '', 'WORKING' }, R.steps];
         end
         function runPipe(app)
             L=app.W.pipeL.Value; c=app.W.pipeC.Value;
             if ~(L>0), app.W.out.Value = {'Length must be > 0.'}; return; end
-            s = {'Natural frequencies (closed-open pipe):'};
-            for n=1:4, s{end+1} = sprintf('  f%d = (2*%d-1)*c/(4L) = %.1f Hz', n, n, (2*n-1)*c/(4*L)); end %#ok<AGROW>
-            app.W.out.Value = s;
+            R = acoustics.pipeModes(L,'c',c,'n',4);
+            app.W.out.Value = R.steps;
         end
 
         % ================= DISTANCE =================
@@ -580,21 +546,18 @@ classdef AcousticsApp < handle
         function runDistance(app)
             L1=app.W.L1.Value; r1=app.W.r1.Value; r2=app.W.r2.Value;
             if r1<=0||r2<=0, app.W.out.Value = {'Distances must be > 0.'}; return; end
-            steps = {};
+            pre = {};
             if ~isempty(strtrim(app.W.ex.Value))
                 extra = app.pnum(app.W.ex);
                 if isnan(extra), app.W.out.Value = {'Extra source level must be a number (or blank).'}; return; end
-                L1c = app.dBsum([L1 extra]);
-                steps{end+1} = sprintf('Combine at r1: L1 = 10*log10(10^(%.4g/10)+10^(%.4g/10)) = %.2f dB', L1, extra, L1c);
-                L1 = L1c;
+                cc = acoustics.combineLevels([L1 extra]);
+                pre = { sprintf('Combine at r1: L1 = %.2f dB', cc.total) };
+                L1 = cc.total;
             end
-            ratio=log10(r2/r1); pt=L1-20*ratio; ln=L1-10*ratio;
-            steps = [steps, { ...
-                sprintf('log10(r2/r1) = log10(%g/%g) = %.4f', r2, r1, ratio), ...
-                sprintf('Point: L2 = L1 - 20*log10(r2/r1) = %.4g - %.2f = %.2f dB', L1, 20*ratio, pt), ...
-                sprintf('Line:  L2 = L1 - 10*log10(r2/r1) = %.4g - %.2f = %.2f dB', L1, 10*ratio, ln) }];
-            app.W.out.Value = [{ sprintf('Point (spherical, -6 dB/doubling): L2 = %.2f dB', pt), ...
-                sprintf('Line  (cylindrical, -3 dB/doubling): L2 = %.2f dB', ln), '', 'WORKING' }, steps];
+            R = acoustics.distanceAttenuation(L1, r1, r2);
+            app.W.out.Value = [{ sprintf('Point (spherical, -6 dB/doubling): L2 = %.2f dB', R.point), ...
+                sprintf('Line  (cylindrical, -3 dB/doubling): L2 = %.2f dB', R.line), '', 'WORKING' }, ...
+                pre, R.steps];
         end
 
         function buildInvDistance(app)
@@ -608,14 +571,12 @@ classdef AcousticsApp < handle
         function runInvDistance(app)
             L1=app.W.L1.Value; L2=app.W.L2.Value; dr=app.W.dr.Value;
             if ~(dr>0), app.W.out.Value = {'Extra distance dr must be > 0.'}; return; end
-            dL=L1-L2;
-            if ~(dL>0), app.W.out.Value = {'Near level L1 must exceed far level L2.'}; return; end
-            Rp=10^(dL/20); Rl=10^(dL/10); yp=dr/(Rp-1); yl=dr/(Rl-1);
-            app.W.out.Value = { sprintf('Point source (-6 dB/doubling): near distance y = %.3f m', yp), ...
-                sprintf('Line  source (-3 dB/doubling): near distance y = %.3f m', yl), ...
-                '', 'WORKING', sprintf('dL = L1 - L2 = %.4g - %.4g = %.4g dB', L1, L2, dL), ...
-                sprintf('Point: y = dr/(10^(dL/20) - 1) = %g/(%.5g - 1) = %.3f m', dr, Rp, yp), ...
-                sprintf('Line:  y = dr/(10^(dL/10) - 1) = %g/(%.5g - 1) = %.3f m', dr, Rl, yl) };
+            if ~(L1-L2>0), app.W.out.Value = {'Near level L1 must exceed far level L2.'}; return; end
+            R = acoustics.solveDistance(L1, L2, dr);
+            app.W.out.Value = [{ ...
+                sprintf('Point source (-6 dB/doubling): near distance y = %.3f m', R.point), ...
+                sprintf('Line  source (-3 dB/doubling): near distance y = %.3f m', R.line), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildLwLp(app)
@@ -636,28 +597,22 @@ classdef AcousticsApp < handle
             r = app.W.r.Value;
             if ~(r>0), app.W.out.Value = {'Distance must be > 0.'}; return; end
             if hasLw==hasLp, app.W.out.Value = {'Fill exactly one of Lw / Lp, blank the other.'}; return; end
-            kp = @(Q) 10*log10(4*pi/Q);
             switch app.W.ty.Value
-                case 'Point, free field  Q=1', coef=20; k=kp(1);
-                case 'Point, on ground  Q=2', coef=20; k=kp(2);
-                case 'Point, edge  Q=4',      coef=20; k=kp(4);
-                case 'Point, corner  Q=8',    coef=20; k=kp(8);
-                case 'Line, free field',      coef=10; k=8;
-                otherwise,                    coef=10; k=5;
+                case 'Point, free field  Q=1', ty='point_free';
+                case 'Point, on ground  Q=2', ty='point_ground';
+                case 'Point, edge  Q=4',      ty='point_edge';
+                case 'Point, corner  Q=8',    ty='point_corner';
+                case 'Line, free field',      ty='line_free';
+                otherwise,                    ty='line_ground';
             end
             if hasLw
-                Lw=app.pnum(app.W.Lw); out=Lw-coef*log10(r)-k; app.W.Lp.Value=sprintf('%.2f',out);
-                app.W.out.Value = { sprintf('Lp = %.2f dB', out), '', 'WORKING', ...
-                    sprintf('Lp = Lw - %g*log10(r) - %.2f', coef, k), ...
-                    sprintf('= %.4g - %g*log10(%g) - %.2f = %.4g - %.3f - %.2f = %.2f dB', ...
-                        Lw, coef, r, k, Lw, coef*log10(r), k, out) };
+                R = acoustics.lwLpDistance(r,'Lw',app.pnum(app.W.Lw),'type',ty);
+                app.W.Lp.Value=sprintf('%.2f',R.Lp); head=sprintf('Lp = %.2f dB', R.Lp);
             else
-                Lp=app.pnum(app.W.Lp); out=Lp+coef*log10(r)+k; app.W.Lw.Value=sprintf('%.2f',out);
-                app.W.out.Value = { sprintf('Lw = %.2f dB', out), '', 'WORKING', ...
-                    sprintf('Lw = Lp + %g*log10(r) + %.2f', coef, k), ...
-                    sprintf('= %.4g + %g*log10(%g) + %.2f = %.4g + %.3f + %.2f = %.2f dB', ...
-                        Lp, coef, r, k, Lp, coef*log10(r), k, out) };
+                R = acoustics.lwLpDistance(r,'Lp',app.pnum(app.W.Lp),'type',ty);
+                app.W.Lw.Value=sprintf('%.2f',R.Lw); head=sprintf('Lw = %.2f dB', R.Lw);
             end
+            app.W.out.Value = [{ head, '', 'WORKING' }, R.steps];
         end
 
         % ================= ROOM =================
@@ -672,17 +627,14 @@ classdef AcousticsApp < handle
         end
         function runRT(app)
             V=app.pnum(app.W.V); S=app.pnum(app.W.S); a=app.pnum(app.W.a); T=app.pnum(app.W.T);
-            miss = isnan(V)+isnan(S)+isnan(a)+isnan(T);
-            if miss~=1, app.W.out.Value = {'Fill exactly three values; leave one blank.'}; return; end
-            if isnan(T), T=0.161*V/(a*S);
-            elseif isnan(a), a=0.161*V/(T*S);
-            elseif isnan(S), S=0.161*V/(T*a);
-            else, V=T*a*S/0.161; end
-            app.W.V.Value=sprintf('%.2f',V); app.W.S.Value=sprintf('%.2f',S);
-            app.W.a.Value=sprintf('%.4f',a); app.W.T.Value=sprintf('%.3f',T);
-            app.W.out.Value = { sprintf('T60 = %.3f s · alpha = %.4f · A = alpha*S = %.2f m^2', T, a, a*S), ...
-                '', 'WORKING', 'T60 = 0.161*V / (alpha*S)', ...
-                sprintf('= 0.161*%.4g / (%.4f*%.4g) = %.3f / %.3f = %.3f s', V, a, S, 0.161*V, a*S, T) };
+            if isnan(V)+isnan(S)+isnan(a)+isnan(T) ~= 1
+                app.W.out.Value = {'Fill exactly three values; leave one blank.'}; return;
+            end
+            R = acoustics.sabineT60('V',V,'S',S,'alpha',a,'T60',T);
+            app.W.V.Value=sprintf('%.2f',R.V); app.W.S.Value=sprintf('%.2f',R.S);
+            app.W.a.Value=sprintf('%.4f',R.alpha); app.W.T.Value=sprintf('%.3f',R.T60);
+            app.W.out.Value = [{ sprintf('T60 = %.3f s · alpha = %.4f · A = alpha*S = %.2f m^2', ...
+                R.T60, R.alpha, R.A), '', 'WORKING' }, R.steps];
         end
 
         function buildAvgAbs(app)
@@ -696,11 +648,8 @@ classdef AcousticsApp < handle
         function runAvgAbs(app)
             rows = app.parseRows(app.W.txt.Value, 2);
             if isempty(rows), app.W.out.Value = {'Each row needs: area, alpha.'}; return; end
-            num=sum(rows(:,1).*rows(:,2)); den=sum(rows(:,1));
-            if den==0, app.W.out.Value = {'Total area is zero.'}; return; end
-            app.W.out.Value = { sprintf('alpha-bar = %.4f', num/den), '', 'WORKING', ...
-                'alpha-bar = sum(alpha_i*S_i) / sum(S_i)', ...
-                sprintf('= %.2f / %.1f = %.4f', num, den, num/den) };
+            R = acoustics.averageAbsorption(rows(:,1)', rows(:,2)');
+            app.W.out.Value = [{ sprintf('alpha-bar = %.4f', R.alphaBar), '', 'WORKING' }, R.steps];
         end
 
         function buildRoomConst(app)
@@ -713,9 +662,8 @@ classdef AcousticsApp < handle
         function runRoomConst(app)
             a=app.W.a.Value; S=app.W.S.Value;
             if ~(a>0&&a<1), app.W.out.Value = {'alpha must be between 0 and 1.'}; return; end
-            R=a*S/(1-a);
-            app.W.out.Value = { sprintf('Room constant R = %.2f m^2', R), '', 'WORKING', ...
-                sprintf('R = alpha*S/(1-alpha) = %.4f*%g/(1-%.4f) = %.2f m^2', a, S, a, R) };
+            R = acoustics.roomConstant(a,S);
+            app.W.out.Value = [{ sprintf('Room constant R = %.2f m^2', R.R), '', 'WORKING' }, R.steps];
         end
 
         function buildRoomEq(app)
@@ -728,14 +676,11 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,6);
         end
         function runRoomEq(app)
-            Lw=app.W.Lw.Value; r=app.W.r.Value; R=app.W.R.Value; Q=str2double(app.W.Q.Value(1));
-            if ~(r>0)||~(R>0), app.W.out.Value = {'r and R must be > 0.'}; return; end
-            direct=Q/(4*pi*r*r); rev=4/R; Lp=Lw+10*log10(direct+rev);
-            if direct>rev, dom='direct field dominates'; else, dom='reverberant field dominates'; end
-            app.W.out.Value = { sprintf('Lp = %.2f dB  (%s)', Lp, dom), '', 'WORKING', ...
-                'Lp = Lw + 10*log10( Q/(4*pi*r^2) + 4/R )', ...
-                sprintf('= %.4g + 10*log10( %.4g + %.4g )', Lw, direct, rev), ...
-                sprintf('= %.4g + 10*log10( %.4g ) = %.2f dB', Lw, direct+rev, Lp) };
+            Lw=app.W.Lw.Value; r=app.W.r.Value; Rc=app.W.R.Value; Q=str2double(app.W.Q.Value(1));
+            if ~(r>0)||~(Rc>0), app.W.out.Value = {'r and R must be > 0.'}; return; end
+            R = acoustics.roomEquation(Lw,r,Rc,'Q',Q);
+            app.W.out.Value = [{ sprintf('Lp = %.2f dB  (%s)', R.Lp, R.dominant), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildReverb(app)
@@ -770,10 +715,13 @@ classdef AcousticsApp < handle
                 if isempty(Lp)||(isnumeric(Lp)&&isnan(Lp)), continue; end
                 if isempty(T)||isempty(al), app.W.out.Value = {sprintf('Band %g Hz needs T60 and alpha as well as Lp.', d{i,1})}; return; end
                 if ~(T>0), app.W.out.Value = {sprintf('T60 at %g Hz must be > 0.', d{i,1})}; return; end
-                A1=0.161*V/T; Aabs=Sabs*al;
-                if remove, A2=A1-Aabs; else, A2=A1+Aabs; end
-                if ~(A2>0), app.W.out.Value = {sprintf('Band %g Hz: absorber exceeds room absorption (A2<=0).', d{i,1})}; return; end
-                dL=10*log10(A1/A2);
+                try
+                    cr = acoustics.absorberChange(V, T, Sabs, al, ...
+                        'mode', ternary(remove,"remove","add"));
+                catch
+                    app.W.out.Value = {sprintf('Band %g Hz: absorber exceeds room absorption (A2<=0).', d{i,1})}; return;
+                end
+                dL=cr.deltaLp;
                 rows(end+1,:)=[d{i,1}, Lp, dL, Lp+dL, app.weight(d{i,1},net)]; %#ok<AGROW>
             end
             if isempty(rows), app.W.out.Value = {'Enter at least one band Lp.'}; return; end
@@ -802,15 +750,12 @@ classdef AcousticsApp < handle
         end
         function runK1(app)
             st=app.W.st.Value; b=app.W.b.Value; dL=st-b;
-            if dL<=0, app.W.out.Value = {'Source level must exceed background.'}; return; end
             if dL<6
                 app.W.out.Value = {sprintf('dL = %.1f dB < 6 dB - measurement invalid (background too high).', dL)}; return;
             end
-            K1=-10*log10(1-10^(-dL/10));
-            extra=''; if dL>=15, extra=' (>=15 dB -> negligible)'; end
-            app.W.out.Value = { sprintf('dL = %.1f dB · K1 = %.3f dB%s', dL, K1, extra), '', 'WORKING', ...
-                'K1 = -10*log10(1 - 10^(-dL/10))', ...
-                sprintf('= -10*log10(1 - 10^(-%.1f/10)) = %.3f dB', dL, K1) };
+            R = acoustics.backgroundK1(st,b);
+            app.W.out.Value = [{ sprintf('dL = %.1f dB · K1 = %.3f dB', R.dL, R.K1), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildK2(app)
@@ -823,9 +768,8 @@ classdef AcousticsApp < handle
         function runK2(app)
             S=app.W.S.Value; A=app.W.A.Value;
             if ~(A>0), app.W.out.Value = {'Absorption area must be > 0.'}; return; end
-            K2=10*log10(1+4*S/A);
-            app.W.out.Value = { sprintf('K2 = %.3f dB', K2), '', 'WORKING', ...
-                sprintf('K2 = 10*log10(1 + 4S/A) = 10*log10(1 + 4*%g/%g) = %.3f dB', S, A, K2) };
+            R = acoustics.environmentalK2(S,A);
+            app.W.out.Value = [{ sprintf('K2 = %.3f dB', R.K2), '', 'WORKING' }, R.steps];
         end
 
         function buildLwMeas(app)
@@ -838,12 +782,11 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,6);
         end
         function runLwMeas(app)
-            lp=app.W.lp.Value; k1=app.W.k1.Value; k2=app.W.k2.Value; S=app.W.S.Value;
+            S=app.W.S.Value;
             if ~(S>0), app.W.out.Value = {'Surface area must be > 0.'}; return; end
-            Lw=(lp-k1-k2)+10*log10(S);
-            app.W.out.Value = { sprintf('Lw = %.2f dB', Lw), '', 'WORKING', ...
-                'Lw = (Lp - K1 - K2) + 10*log10(S/S0),  S0 = 1 m^2', ...
-                sprintf('= (%g - %g - %g) + 10*log10(%g) = %.2f dB', lp, k1, k2, S, Lw) };
+            R = acoustics.soundPowerMeasured(app.W.lp.Value, S, ...
+                'K1',app.W.k1.Value, 'K2',app.W.k2.Value);
+            app.W.out.Value = [{ sprintf('Lw = %.2f dB', R.Lw), '', 'WORKING' }, R.steps];
         end
 
         function buildPowerBands(app)
@@ -874,39 +817,24 @@ classdef AcousticsApp < handle
         end
         function runPowerBands(app)
             net = app.netChar(app.W.net.Value);
-            d=app.W.tbl.Data; rows=[];
+            d=app.W.tbl.Data; f=[]; L=[];
             for i=1:size(d,1)
                 v=d{i,2};
-                if ~isempty(v)&&~isnan(v)
-                    f=d{i,1}; w=app.weight(f,net); rows(end+1,:)=[f, v, v-w]; %#ok<AGROW>
-                end
+                if ~isempty(v)&&~isnan(v), f(end+1)=d{i,1}; L(end+1)=v; end %#ok<AGROW>
             end
-            if isempty(rows), app.W.out.Value = {'Enter at least one band level.'}; return; end
+            if isempty(L), app.W.out.Value = {'Enter at least one band level.'}; return; end
             switch app.W.surf.Value
                 case 'Custom area'
                     S=str2double(app.W.Scust.Value);
                     if ~(S>0), app.W.out.Value = {'Enter a custom area S > 0.'}; return; end
-                    surfName='custom surface';
                 otherwise
                     r=str2double(app.W.r.Value); dd=str2double(app.W.d.Value);
                     if ~(r>0)&&dd>0, r=dd/2; end
                     if ~(r>0), app.W.out.Value = {'Enter a radius or diameter > 0 (or custom area).'}; return; end
-                    if startsWith(app.W.surf.Value,'Sphere'), S=4*pi*r*r; surfName='sphere (S=4*pi*r^2)';
-                    else, S=2*pi*r*r; surfName='hemisphere (S=2*pi*r^2)'; end
+                    if startsWith(app.W.surf.Value,'Sphere'), S=4*pi*r*r; else, S=2*pi*r*r; end
             end
-            Lp=app.dBsum(rows(:,3)); p2=app.PREF^2*10^(Lp/10); I=p2/app.RHOC; Wp=I*S; Lw=10*log10(Wp/app.WREF);
-            lines = {'Un-weighted band levels:'};
-            for i=1:size(rows,1)
-                lines{end+1} = sprintf('  %6g Hz: %g  -> %.1f', rows(i,1), rows(i,2), rows(i,3)); %#ok<AGROW>
-            end
-            lines = [lines, { '', sprintf('Lw = %.1f dB re 1e-12 W', Lw), '', 'WORKING', ...
-                sprintf('Overall SPL Lp = 10*log10( sum 10^(L_lin/10) ) = %.2f dB', Lp), ...
-                sprintf('p2_rms = p_ref^2 * 10^(Lp/10) = %.4g Pa^2', p2), ...
-                sprintf('I = p2/(rho c) = %.4g W/m^2', I), ...
-                sprintf('%s: S = %.4g m^2', surfName, S), ...
-                sprintf('W = I*S = %.4g W', Wp), ...
-                sprintf('Lw = 10*log10(W/1e-12) = %.1f dB', Lw) }];
-            app.W.out.Value = lines;
+            R = acoustics.lwFromBands(f, L, S, 'net', net);
+            app.W.out.Value = [{ sprintf('Lw = %.1f dB re 1e-12 W', R.Lw), '', 'WORKING' }, R.steps];
         end
 
         % ================= DUCT =================
@@ -922,26 +850,13 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,8);
         end
         function runDuct(app)
-            Lw=app.W.Lw.Value; d=app.W.d.Value/1000; Sdb=app.W.sens.Value; rho=app.W.rho.Value; c=app.W.c.Value;
+            Lw=app.W.Lw.Value; d=app.W.d.Value; Sdb=app.W.sens.Value; rho=app.W.rho.Value; c=app.W.c.Value;
             fmax=app.pnum(app.W.fmax); if isnan(fmax), fmax=0; end
             if ~(d>0), app.W.out.Value = {'Pipe diameter must be > 0.'}; return; end
             if ~(rho>0&&c>0), app.W.out.Value = {'Density and sound speed must be > 0.'}; return; end
-            Wp=app.WREF*10^(Lw/10); A=pi*d*d/4; I=Wp/A; rc=rho*c; p=sqrt(I*rc);
-            Lp=20*log10(p/app.PREF); sens=10^(Sdb/20); V=p*sens; fc=1.8412*c/(pi*d);
-            if fmax>0
-                if fmax<fc, modeNote=sprintf('Highest freq %.0f Hz < cut-on %.0f Hz -> plane waves only, valid.', fmax, fc);
-                else, modeNote=sprintf('Highest freq %.0f Hz >= cut-on %.0f Hz -> higher-order modes, result approximate.', fmax, fc); end
-            else
-                modeNote=sprintf('First higher-order mode cuts on at %.0f Hz (plane-wave assumption valid below).', fc);
-            end
-            app.W.out.Value = { sprintf('RMS voltage = %.4g V  (%.4g mV)', V, V*1000), '', 'WORKING', ...
-                sprintf('W = W_ref*10^(Lw/10) = %.4g W', Wp), ...
-                sprintf('A = pi*d^2/4 = %.4g m^2', A), ...
-                sprintf('I = W/A = %.4g W/m^2', I), ...
-                sprintf('p_rms = sqrt(I*rho*c) = sqrt(%.4g) = %.4g Pa', I*rc, p), ...
-                sprintf('(SPL Lp = 20*log10(p/p_ref) = %.1f dB)', Lp), ...
-                sprintf('mic sensitivity = 10^(S/20) = %.4g V/Pa', sens), ...
-                sprintf('V = p_rms*10^(S/20) = %.4g V', V), '', modeNote };
+            R = acoustics.ductToVoltage(Lw, d, Sdb, 'rho',rho, 'c',c, 'fmax',fmax);
+            app.W.out.Value = [{ sprintf('RMS voltage = %.4g V  (%.4g mV)', R.V, R.V*1000), ...
+                '', 'WORKING' }, R.steps];
         end
 
         % ================= WEIGHTING =================
@@ -970,17 +885,10 @@ classdef AcousticsApp < handle
                 if ~isempty(v)&&~isnan(v), f(end+1)=d{i,1}; L(end+1)=v; end %#ok<AGROW>
             end
             if isempty(L), app.W.out.Value = {'Enter at least one band level.'}; return; end
-            w=arrayfun(@(x) app.weight(x,net), f); Lw=L+w;
-            lin=app.dBsum(L); wtd=app.dBsum(Lw);
+            R = acoustics.weightedOverall(f, L, net);
             tag='dB'; if net~='Z', tag=sprintf('dB(%c)',net); end
-            lines = { sprintf('Overall %s = %.1f', tag, wtd), ...
-                sprintf('Linear (unweighted) total = %.1f dB', lin), '', 'WORKING', ...
-                'L_W = 10*log10( sum 10^((Li+Wi)/10) )' };
-            for i=1:numel(f)
-                lines{end+1} = sprintf('  %6g Hz: %g %+.1f = %.1f', f(i), L(i), w(i), Lw(i)); %#ok<AGROW>
-            end
-            lines{end+1} = sprintf('  => %.1f %s', wtd, tag);
-            app.W.out.Value = lines;
+            app.W.out.Value = [{ sprintf('Overall %s = %.1f', tag, R.weighted), ...
+                sprintf('Linear (unweighted) total = %.1f dB', R.linear), '', 'WORKING' }, R.steps];
         end
 
         % ================= BAND WORKBENCH =================
@@ -1047,15 +955,12 @@ classdef AcousticsApp < handle
             def = app.unitChar(app.W.unit.Value);
             [L,t] = app.readLevelTime(app.W.tbl, def);
             if isempty(L), app.W.out.Value = {'Enter level, duration rows (e.g. 96, 15 min).'}; return; end
-            energy=sum(t.*10.^(L/10)); sumT=sum(t);
-            T=app.parseTime(app.W.T.Value, def); if isnan(T)||T<=0, T=sumT; end
-            leq=10*log10(energy/T); sel=10*log10(energy);
-            app.W.out.Value = { sprintf('Leq = %.3f dB   (sum t = %s, T = %s)', leq, app.fmtSeconds(sumT), app.fmtSeconds(T)), ...
-                sprintf('SEL (L_AE, over 1 s) = %.2f dB', sel), '', 'WORKING', ...
-                'Leq = 10*log10( (1/T) * sum ti*10^(Li/10) )   [SI seconds]', ...
-                sprintf('= 10*log10( (1/%.4g) * %.5g ) = %.3f dB', T, energy, leq), ...
-                'SEL = 10*log10( sum ti*10^(Li/10) / 1s ) = Leq + 10*log10(T/1s)', ...
-                sprintf('= %.3f + 10*log10(%.4g) = %.2f dB', leq, T, sel) };
+            T = app.parseTime(app.W.T.Value, def);
+            R = acoustics.leqFromLevels(L, t, 'T', T);
+            app.W.out.Value = [{ ...
+                sprintf('Leq = %.3f dB   (sum t = %s, T = %s)', R.Leq, ...
+                    app.fmtSeconds(R.sumT), app.fmtSeconds(R.T)), ...
+                sprintf('SEL (L_AE, over 1 s) = %.2f dB', R.SEL), '', 'WORKING' }, R.steps];
         end
 
         function buildEvents(app)
@@ -1079,17 +984,16 @@ classdef AcousticsApp < handle
             def = app.unitChar(app.W.unit.Value);
             T = app.parseTime(app.W.T.Value, def);
             if ~(T>0), app.W.out.Value = {'Reference period T must be > 0.'}; return; end
-            d=app.W.tbl.Data; energy=0; ok=false;
+            d=app.W.tbl.Data; L=[]; tt=[]; n=[];
             for i=1:size(d,1)
-                L=d{i,1}; tsec=app.parseTime(d{i,2},def); n=d{i,3};
-                if isempty(L)||(isnumeric(L)&&isnan(L))||isnan(tsec)||isempty(n)||(isnumeric(n)&&isnan(n)), continue; end
-                energy=energy+n*tsec*10^(L/10); ok=true;
+                a=d{i,1}; tsec=app.parseTime(d{i,2},def); cnt=d{i,3};
+                if isempty(a)||(isnumeric(a)&&isnan(a))||isnan(tsec)||isempty(cnt)||(isnumeric(cnt)&&isnan(cnt)), continue; end
+                L(end+1)=a; tt(end+1)=tsec; n(end+1)=cnt; %#ok<AGROW>
             end
-            if ~ok, app.W.out.Value = {'Each row needs: level, event duration, number of events.'}; return; end
-            leq=10*log10(energy/T);
-            app.W.out.Value = { sprintf('Leq,T = %.3f dB   (T = %s)', leq, app.fmtSeconds(T)), '', 'WORKING', ...
-                'Leq = 10*log10( (1/T) * sum Ni*ti*10^(Li/10) )   [SI seconds]', ...
-                sprintf('= 10*log10( (1/%.4g) * %.5g ) = %.3f dB', T, energy, leq) };
+            if isempty(L), app.W.out.Value = {'Each row needs: level, event duration, number of events.'}; return; end
+            R = acoustics.leqFromEvents(L, tt, n, T);
+            app.W.out.Value = [{ sprintf('Leq,T = %.3f dB   (T = %s)', R.Leq, app.fmtSeconds(T)), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildTimeVarying(app)
@@ -1123,7 +1027,7 @@ classdef AcousticsApp < handle
                 for i=1:np
                     s=app.segAt(segs,tt(i)); arr(i)=app.segLevel(s,tt(i));
                 end
-                arr=sort(arr); LN=arr(max(1,floor((1-N/100)*(np-1))+1));
+                LN = acoustics.percentileLevel(arr, N).LN;
             end
             lines = { sprintf('Leq = %.2f dB(A)', leq) };
             if ~isnan(LN)
@@ -1182,24 +1086,14 @@ classdef AcousticsApp < handle
             def = app.unitChar(app.W.unit.Value);
             [L,tsec] = app.readLevelTime(app.W.tbl, def);
             if isempty(L), app.W.out.Value = {'Enter level, duration rows.'}; return; end
-            t = tsec/3600;  % hours
             Lc=app.W.Lc.Value; q=app.W.q.Value; Tc=app.W.Tc.Value;
-            energy=sum(t.*10.^(L/10)); sumT=sum(t);
-            Ti=Tc./2.^((L-Lc)/q); dose=sum(t./Ti);
-            leqT=10*log10(energy/sumT); leq8=10*log10(energy/Tc);
-            Tmax=Tc/2^((leqT-Lc)/q); exceed=leq8>Lc;
-            app.W.out.Value = { ...
-                sprintf('L_Aeq,T  (over %.3g h) = %.3f dB(A)', sumT, leqT), ...
-                sprintf('L_Aeq,%gh             = %.3f dB(A)', Tc, leq8), ...
-                sprintf('Noise dose            = %.1f %%  (100%% = limit)', dose*100), ...
-                sprintf('Exceeds %g dB(A)?      %s', Lc, ternary(exceed,'YES','No')), ...
-                sprintf('Max permissible time  = %.3f h (%s)', Tmax, fmtHM(Tmax)), ...
-                '', 'WORKING', ...
-                sprintf('L_Aeq,T = 10*log10( (1/%.3g) * sum ti*10^(Li/10) ) = %.3f dB(A)', sumT, leqT), ...
-                sprintf('L_Aeq,%gh = L_Aeq,T + 10*log10(T/Tc) = %.3f', Tc, leq8), ...
-                'Allowed time Ti = Tc / 2^((Li-Lc)/q)', ...
-                sprintf('Dose = sum ti/Ti = %.4f = %.1f %%', dose, dose*100), ...
-                sprintf('Tmax = Tc / 2^((L_Aeq,T-Lc)/q) = %.3f h', Tmax) };
+            R = acoustics.noiseDose(L, tsec, 'Lc',Lc, 'q',q, 'Tc',Tc);
+            app.W.out.Value = [{ ...
+                sprintf('L_Aeq,T = %.3f dB(A)   ·   L_Aeq,%gh = %.3f dB(A)', R.LAeqT, Tc, R.LAeqTc), ...
+                sprintf('Noise dose = %.1f %%  (100%% = limit)', R.dosePct), ...
+                sprintf('Exceeds %g dB(A)? %s   ·   Max permissible time = %.3f h (%s)', ...
+                    Lc, ternary(R.exceeds,'YES','No'), R.Tmax, fmtHM(R.Tmax)), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildMaxTime(app)
@@ -1214,11 +1108,10 @@ classdef AcousticsApp < handle
         function runMaxTime(app)
             L=app.W.L.Value; Lc=app.W.Lc.Value; q=app.W.q.Value; Tc=app.W.Tc.Value;
             if ~(q>0)||~(Tc>0), app.W.out.Value = {'q and Tc must be > 0.'}; return; end
-            T=Tc/2^((L-Lc)/q); exceed=L>Lc;
-            app.W.out.Value = { sprintf('T = %.3f h  (%s) - level %s the %g dB(A) criterion.', ...
-                    T, fmtHM(T), ternary(exceed,'exceeds','is within'), Lc), ...
-                '', 'WORKING', 'T = Tc / 2^((L - Lc)/q)', ...
-                sprintf('= %g / 2^((%g - %g)/%g) = %g / %.4g = %.4f h', Tc, L, Lc, q, Tc, 2^((L-Lc)/q), T) };
+            R = acoustics.maxPermissibleTime(L,'Lc',Lc,'q',q,'Tc',Tc);
+            app.W.out.Value = [{ sprintf('T = %.3f h  (%s) - level %s the %g dB(A) criterion.', ...
+                R.T, fmtHM(R.T), ternary(R.exceeds,'exceeds','is within'), Lc), ...
+                '', 'WORKING' }, R.steps];
         end
 
         % ================= LOUDNESS =================
@@ -1229,10 +1122,9 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,4);
         end
         function runPh2S(app)
-            p=app.W.p.Value; s=2^((p-40)/10);
-            extra={}; if p<40, extra={'Note: formula assumes LL >= 40 phon.'}; end
-            app.W.out.Value = [{ sprintf('Loudness = %.3f sones', s) }, extra, ...
-                { '', 'WORKING', 'S = 2^((LL - 40)/10)', sprintf('= 2^((%g - 40)/10) = %.3f sones', p, s) }];
+            R = acoustics.phonToSone(app.W.p.Value);
+            app.W.out.Value = [{ sprintf('Loudness = %.3f sones', R.sones), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildS2Ph(app)
@@ -1244,35 +1136,33 @@ classdef AcousticsApp < handle
         function runS2Ph(app)
             s=app.W.s.Value;
             if ~(s>0), app.W.out.Value = {'Sones must be > 0.'}; return; end
-            p=40+10*log2(s);
-            app.W.out.Value = { sprintf('Loudness level = %.2f phons', p), '', 'WORKING', ...
-                'LL = 40 + 10*log2(S)', sprintf('= 40 + 10*log2(%g) = %.2f phons', s, p) };
+            R = acoustics.soneToPhon(s);
+            app.W.out.Value = [{ sprintf('Loudness level = %.2f phons', R.phons), ...
+                '', 'WORKING' }, R.steps];
         end
 
-        % ================= SPEECH (PSIL) =================
+        % ================= SPEECH (SIL / voice level) =================
         function buildPSIL(app)
-            gl = app.form(6);
-            app.W.a = app.numField(gl,1,'L at 500 Hz (dB)',76);
-            app.W.b = app.txtField(gl,2,'L at 1000 Hz (blank = same)','');
-            app.W.c = app.txtField(gl,3,'L at 2000 Hz (blank = same)','');
-            app.W.dist = app.numField(gl,4,'Talker-listener distance (m)',1.5);
-            app.goButton(gl,5,@(o,e) app.runPSIL());
-            app.W.out = app.resultBox(gl,6);
+            gl = app.form(7);
+            app.W.a = app.numField(gl,1,'L at 500 Hz (dB)',105);
+            app.W.b = app.numField(gl,2,'L at 1000 Hz (dB)',104);
+            app.W.c = app.numField(gl,3,'L at 2000 Hz (dB)',103);
+            app.W.d = app.txtField(gl,4,'L at 4000 Hz (dB, optional)','102.68');
+            app.W.dist = app.numField(gl,5,'Talker-listener distance r (m)',1);
+            app.goButton(gl,6,@(o,e) app.runPSIL());
+            app.W.out = app.resultBox(gl,7);
         end
         function runPSIL(app)
-            a=app.W.a.Value;
-            b=app.pnum(app.W.b); if isnan(b), b=a; end
-            c=app.pnum(app.W.c); if isnan(c), c=a; end
-            dist=app.W.dist.Value; psil=(a+b+c)/3;
-            adj=psil+20*log10(max(dist,0.05)/1.0);
-            if adj<45, effort='Normal to Raised';
-            elseif adj<55, effort='Raised to Very Loud';
-            elseif adj<65, effort='Very Loud to Shouting';
-            elseif adj<75, effort='Shouting';
-            else, effort='Communication impossible'; end
-            app.W.out.Value = { sprintf('PSIL = %.2f dB · at %g m voice effort: %s', psil, dist, effort), ...
-                '', 'WORKING', 'PSIL = (L500 + L1000 + L2000)/3', ...
-                sprintf('= (%g + %g + %g)/3 = %.2f dB', a, b, c, psil) };
+            bands = [app.W.a.Value app.W.b.Value app.W.c.Value];
+            d4 = app.pnum(app.W.d); if ~isnan(d4), bands(end+1)=d4; end
+            r = app.W.dist.Value;
+            if ~(r>0), app.W.out.Value = {'Distance r must be > 0.'}; return; end
+            sil = acoustics.speechInterferenceLevel(bands);
+            vl  = acoustics.voiceLevelA(sil.SIL, r);
+            headline = sprintf('SIL = %.2f dB · VL_A = %.2f dB(A) · %s', ...
+                sil.SIL, vl.VLA, ternary(vl.possible,'communication possible', ...
+                'communication NOT possible'));
+            app.W.out.Value = [{headline, '', 'WORKING'}, sil.steps, {''}, vl.steps];
         end
 
         % ================= COMMUNITY =================
@@ -1284,12 +1174,8 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,4);
         end
         function runLdn(app)
-            dv=app.W.day.Value; nv=app.W.night.Value;
-            ed=15*10^(dv/10); en=9*10^((nv+10)/10); ldn=10*log10((ed+en)/24);
-            app.W.out.Value = { sprintf('Ldn = %.2f dB(A)', ldn), '', 'WORKING', ...
-                'Ldn = 10*log10( (1/24)[ 15*10^(Lday/10) + 9*10^((Lnight+10)/10) ] )', ...
-                sprintf('= 10*log10( (1/24)[ %.4g + %.4g ] )', ed, en), ...
-                sprintf('= 10*log10( %.5g ) = %.2f dB(A)', (ed+en)/24, ldn) };
+            R = acoustics.dayNightLevel(app.W.day.Value, app.W.night.Value);
+            app.W.out.Value = [{ sprintf('Ldn = %.2f dB(A)', R.Ldn), '', 'WORKING' }, R.steps];
         end
 
         % ================= STATS / SEL =================
@@ -1301,12 +1187,10 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,4);
         end
         function runSEL(app)
-            leq=app.W.leq.Value; T=app.W.T.Value;
+            T=app.W.T.Value;
             if ~(T>0), app.W.out.Value = {'T must be > 0.'}; return; end
-            sel=leq+10*log10(T);
-            app.W.out.Value = { sprintf('SEL = %.2f dB', sel), '', 'WORKING', ...
-                'SEL = Leq + 10*log10(T / 1 s)', ...
-                sprintf('= %g + 10*log10(%g) = %g + %.3f = %.2f dB', leq, T, leq, 10*log10(T), sel) };
+            R = acoustics.selFromLeq('Leq',app.W.leq.Value,'T',T);
+            app.W.out.Value = [{ sprintf('SEL = %.2f dB', R.SEL), '', 'WORKING' }, R.steps];
         end
 
         function buildSort(app)
@@ -1338,18 +1222,19 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,6);
         end
         function runMassLaw(app)
-            M=app.pnum(app.W.M);
-            if isnan(M)
-                rho=app.pnum(app.W.rho); t=app.pnum(app.W.t);
-                if ~isnan(rho)&&~isnan(t), M=rho*t/1000; end
+            f=app.W.f.Value; M=app.pnum(app.W.M);
+            try
+                if ~isnan(M)
+                    R = acoustics.massLawTL(f,'M',M);
+                else
+                    R = acoustics.massLawTL(f,'density',app.pnum(app.W.rho), ...
+                        'thickness_mm',app.pnum(app.W.t));
+                end
+            catch
+                app.W.out.Value = {'Enter surface mass, or density and thickness.'}; return;
             end
-            f=app.W.f.Value;
-            if ~(M>0), app.W.out.Value = {'Enter surface mass, or density and thickness.'}; return; end
-            TL=20*log10(M*f)-42.4;
-            app.W.out.Value = { sprintf('Surface mass M = %.3f kg/m^2', M), ...
-                sprintf('TL = %.1f dB at %g Hz', TL, f), '', 'WORKING', ...
-                'TL = 20*log10(M*f) - 42.4', ...
-                sprintf('= 20*log10(%.3f*%g) - 42.4 = %.2f - 42.4 = %.1f dB', M, f, 20*log10(M*f), TL) };
+            app.W.out.Value = [{ sprintf('Surface mass M = %.3f kg/m^2 · TL = %.1f dB at %g Hz', ...
+                R.M, R.TL, f), '', 'WORKING' }, R.steps];
         end
 
         function buildInterface(app)
@@ -1360,11 +1245,10 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,4);
         end
         function runInterface(app)
-            z1=app.W.z1.Value; z2=app.W.z2.Value; r=z2/z1;
-            at=4*r/((r+1)^2); ar=((r-1)/(r+1))^2; TL=-10*log10(at);
-            app.W.out.Value = { sprintf('Impedance ratio r = z2/z1 = %.4g', r), ...
-                sprintf('alpha_t = %.4g · alpha_r = %.4f', at, ar), ...
-                sprintf('TL = -10*log10(alpha_t) = %.2f dB', TL) };
+            R = acoustics.interfaceImpedance(app.W.z1.Value, app.W.z2.Value);
+            app.W.out.Value = [{ ...
+                sprintf('r = z2/z1 = %.4g · alpha_t = %.4g · alpha_r = %.4f · TL = %.2f dB', ...
+                    R.ratio, R.alphaT, R.alphaR, R.TL), '', 'WORKING' }, R.steps];
         end
 
         function buildTLcoef(app)
@@ -1376,7 +1260,8 @@ classdef AcousticsApp < handle
         function runTLcoef(app)
             a=app.W.a.Value;
             if ~(a>0&&a<=1), app.W.out.Value = {'alpha must be between 0 and 1.'}; return; end
-            app.W.out.Value = { sprintf('TL = -10*log10(alpha_t) = -10*log10(%g) = %.2f dB', a, -10*log10(a)) };
+            R = acoustics.tlFromCoefficient(a);
+            app.W.out.Value = [{ sprintf('TL = %.2f dB', R.TL), '', 'WORKING' }, R.steps];
         end
 
         function buildPanelRes(app)
@@ -1389,8 +1274,8 @@ classdef AcousticsApp < handle
         function runPanelRes(app)
             K=app.W.K.Value; M=app.W.M.Value;
             if ~(K>0&&M>0), app.W.out.Value = {'K and M must be > 0.'}; return; end
-            fn=sqrt(K/M)/(2*pi);
-            app.W.out.Value = { sprintf('fn = (1/2pi)*sqrt(K/M) = (1/2pi)*sqrt(%g/%g) = %.2f Hz', K, M, fn) };
+            R = acoustics.panelResonance(K,M);
+            app.W.out.Value = [{ sprintf('fn = %.2f Hz', R.fn), '', 'WORKING' }, R.steps];
         end
 
         % ================= MUFFLERS =================
@@ -1404,11 +1289,9 @@ classdef AcousticsApp < handle
         function runAreaChange(app)
             s1=app.W.s1.Value; s2=app.W.s2.Value;
             if ~(s1>0&&s2>0), app.W.out.Value = {'Areas must be > 0.'}; return; end
-            Tt=4*s1*s2/((s1+s2)^2); TL=-10*log10(Tt);
-            app.W.out.Value = { sprintf('Tt = %.4g · TL = %.2f dB', Tt, TL), '', 'WORKING', ...
-                'Tt = 4*S1*S2 / (S1+S2)^2', ...
-                sprintf('= %.4g / %.4g = %.4g', 4*s1*s2, (s1+s2)^2, Tt), ...
-                sprintf('TL = -10*log10(Tt) = %.2f dB', TL) };
+            R = acoustics.mufflerAreaChange(s1,s2);
+            app.W.out.Value = [{ sprintf('Tt = %.4g · TL = %.2f dB', R.Tt, R.TL), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildExpChamber(app)
@@ -1424,11 +1307,9 @@ classdef AcousticsApp < handle
         function runExpChamber(app)
             s1=app.W.s1.Value; s2=app.W.s2.Value; L=app.W.L.Value; f=app.W.f.Value; c=app.W.c.Value;
             if ~(s1>0&&s2>0), app.W.out.Value = {'Areas must be > 0.'}; return; end
-            m=s2/s1; kL=2*pi*f/c*L;
-            TL=10*log10(cos(kL)^2+0.25*(m+1/m)^2*sin(kL)^2); lam=c/f;
-            app.W.out.Value = { sprintf('kL = %.3f rad · TL = %.2f dB', kL, TL), ...
-                sprintf('m = S2/S1 = %.2f · lambda = %.3f m · lambda/4 = %.3f m (peak length)', m, lam, lam/4), ...
-                '', 'WORKING', 'TL = 10*log10[ cos^2(kL) + 1/4 (m+1/m)^2 sin^2(kL) ]' };
+            R = acoustics.expansionChamberTL(s1,s2,L,f,'c',c);
+            app.W.out.Value = [{ sprintf('kL = %.3f rad · TL = %.2f dB', R.kL, R.TL), ...
+                '', 'WORKING' }, R.steps];
         end
 
         function buildLevelDiff(app)
@@ -1439,9 +1320,8 @@ classdef AcousticsApp < handle
             app.W.out = app.resultBox(gl,4);
         end
         function runLevelDiff(app)
-            a=app.W.a.Value; b=app.W.b.Value;
-            app.W.out.Value = { sprintf('Difference = %.2f dB', a-b), ...
-                '(TL = Lw1 - Lw2 · IL = L_before - L_after · NR = L_in - L_out)' };
+            R = acoustics.levelDifference(app.W.a.Value, app.W.b.Value);
+            app.W.out.Value = [{ sprintf('Difference = %.2f dB', R.difference) }, R.steps];
         end
 
         % ================= REFERENCE TABLE =================
@@ -1597,17 +1477,4 @@ function s = fmtHM(hours)
     if m>0, parts{end+1}=sprintf('%d min',m); end
     if secs>0 && h==0, parts{end+1}=sprintf('%d s',secs); end
     if isempty(parts), s='0 min'; else, s=strjoin(parts,' '); end
-end
-function T = acousticsData()
-    % [freq, A, B, C] relative response (dB), IEC 61672 family.
-    T = [ 25 -44.7 -20.4 -4.4;  31.5 -39.4 -17.1 -3.0;  40 -34.6 -14.2 -2.0;
-          50 -30.2 -11.6 -1.3;  63 -26.2 -9.3 -0.8;     80 -22.5 -7.4 -0.5;
-          100 -19.1 -5.6 -0.3;  125 -16.1 -4.2 -0.2;    160 -13.4 -3.0 -0.1;
-          200 -10.9 -2.0 0.0;   250 -8.6 -1.3 0.0;      315 -6.6 -0.8 0.0;
-          400 -4.8 -0.5 0.0;    500 -3.2 -0.3 0.0;      630 -1.9 -0.1 0.0;
-          800 -0.8 0.0 0.0;     1000 0.0 0.0 0.0;       1250 0.6 0.0 0.0;
-          1600 1.0 0.0 -0.1;    2000 1.2 -0.1 -0.2;     2500 1.3 -0.2 -0.3;
-          3150 1.2 -0.4 -0.5;   4000 1.0 -0.7 -0.8;     5000 0.5 -1.2 -1.3;
-          6300 -0.1 -1.9 -2.0;  8000 -1.1 -2.9 -3.0;    10000 -2.5 -4.3 -4.4;
-          12500 -4.3 -6.1 -6.2; 16000 -6.6 -8.4 -8.5;   20000 -9.3 -11.1 -11.2 ];
 end

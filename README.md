@@ -1,119 +1,145 @@
-# MECH9325-MATLAB-AIO
+# MECH9325 — MATLAB Acoustics & Noise-Control Calculator (AIO)
 
-**Acoustics & Noise Toolkit** — a search-driven, all-in-one acoustics and noise
-calculator for MATLAB. A single programmatic App Designer–style GUI mirrors the
-MECH9325 web app: type in the search box to filter the list of calculators on
-the left, and the selected calculator's form appears on the right.
+An all-in-one acoustics and noise-control calculator for the course **MECH9325**,
+native to MATLAB. It is a port of the client-side web-app version and bundles
+every calculator from the course (Units 1–8 and the quizzes) behind one
+interface, with the **full working shown** for every result.
 
-Every calculator shows not just the answer but the **full working** (formulae and
-substituted numbers), making it useful for checking hand calculations and study.
+The project has two layers:
+
+1. **`AcousticsApp`** — a programmatic App Designer–style GUI (`uifigure` /
+   `uigridlayout`). A search box filters ~50 calculators; the selected one shows
+   a form and prints the substituted formulae alongside the answer.
+2. **`+acoustics`** — a backing library of plain functions, **one `.m` file per
+   formula**, each with an `arguments` block, input validation, and a `.steps`
+   field of worked-step strings. The app calls these, and you can call them
+   directly from the command line or your own scripts.
+
+> **Why a code-based GUI and not a binary `.mlapp`?** A `.mlapp` is a binary
+> package that only App Designer can author. The programmatic `uifigure` app
+> here is the standard, fully version-controllable equivalent — it opens with a
+> single command and needs no App Designer.
 
 ## Requirements
 
-- MATLAB **R2018b or newer** (needs `uifigure`, `uigridlayout` and related App
-  Building functions).
-- **No additional toolboxes required** — runs on base MATLAB.
+- MATLAB **R2018b or newer** (needs `uifigure`, `uigridlayout`, and the
+  `arguments` block).
+- **No additional toolboxes.** The unit tests use `matlab.unittest`, which ships
+  with base MATLAB.
 
-## Getting Started
+## Getting started
 
-1. Clone or download this repository.
-2. Open MATLAB and `cd` into the project folder (where `AcousticsApp.m` lives).
-3. Run the app from the Command Window:
+```matlab
+cd MECH9325-MATLAB-AIO      % folder containing AcousticsApp.m and +acoustics/
+AcousticsApp                % launch the GUI
+```
 
-   ```matlab
-   AcousticsApp
-   ```
+Type in the search box (e.g. `dBA`, `Leq`, `octave`, `dose`, `TL`, `sones`,
+`speech`), pick a calculator, fill the form, and press **Compute**.
 
-4. Use the search box at the top to filter calculators (e.g. `dBA`, `Leq`,
-   `octave`, `dose`, `distance`), select one from the list, fill in the form,
-   and press **Compute**.
+### Using the library directly
 
-## Calculators
+The `+acoustics` package must be on the path (running from the repo root is
+enough). Every function returns a struct with the numeric outputs and a `.steps`
+cell array:
 
-The toolkit ports the full MECH9325 quiz material — around 50 calculators,
-grouped below. Each one prints the substituted formula and working alongside the
-answer.
+```matlab
+acoustics.splPressure('p', 1).Lp            % 93.98 dB   (1 Pa)
+acoustics.powerLevel('W', 0.5).Lw           % 116.99 dB  (0.5 W)
+acoustics.speedOfSoundTemp(20).c            % 343.2 m/s
+acoustics.phonToSone(80).sones              % 16 sones
+acoustics.sabineT60('V',200,'S',240,'alpha',0.15).T60
 
-**Levels & conversions**
-- SPL ↔ RMS pressure (`Lp = 20·log10(p / 2e-5)`)
-- Sound power level `Lw` ↔ power `W`
-- Sound intensity level `LI` (and `I = p²/ρc`)
-- Peak ↔ RMS (`p_rms = P/√2`) and combining component RMS pressures
-- PSD → RMS pressure (integrate a band: `p_rms² = ½(S₁+S₂)(f₂−f₁)`)
+v = acoustics.voiceLevelA(103.67, 1);       % ship engine-room example
+v.VLA          % 102.2 dB(A)
+v.possible     % false  (exceeds 88 dB(A) peak shouting)
 
-**Combine / subtract**
-- Combine (energy-sum) a list of levels
-- `N` identical sources (`L_tot = L1 + 10·log10(N)`)
-- Increase when more sources are added
-- Error from using only the larger of two signals
-- Maximum number of sources under a level limit
-- Remove a background / one source (energy subtraction)
-- One of `N` identical sources
+disp(acoustics.massLawTL(1000,'density',500,'thickness_mm',3).steps)
+```
 
-**Waves**
-- `c = f·λ` (with period, ω, wavenumber)
-- Speed of sound from temperature
-- Particle velocity & displacement
-- Octave / ⅓-octave band edges and closed-pipe natural frequencies
+## Running the tests
 
-**Distance & sound power**
-- Distance attenuation: point (−6 dB/doubling) and line (−3 dB/doubling) sources
-- Solve source distance from two measured levels
-- `Lw` ↔ `Lp` at a distance (free field, ground, edge, corner; line sources)
-- Background (K₁) and environmental (K₂) corrections
-- Sound power level from surface SPL measurements
-- `Lw` from free-field band SPLs (un-weight + measurement-surface area)
-- Duct sound power → microphone voltage (with plane-wave cut-on check)
+```matlab
+runAcousticsTests        % or:  runtests('tests')
+```
 
-**Room acoustics**
-- Sabine reverberation time (solve any one of `V`, `S`, `ᾱ`, `T₆₀`)
-- Average absorption coefficient
-- Room constant `R`
-- Room equation `Lp` from `Lw` (direct + reverberant field)
-- Reverberant level change when absorber panels are added/removed
+The suite (`tests/acousticsValidationTest.m`) asserts the course's worked
+answers, including: **1 Pa → 94 dB**, **0.5 W → 117 dB**, **c(20 °C) = 343 m/s**,
+**16 sones**, **overall dB(A) = 77.5**, **LAeq,24h = 70.55**, **plywood mass-law
+TL = 21 dB @ 1 kHz**, and the ship engine-room speech example
+(**SIL = 103.67 dB**, **VL_A = 102.2 dB(A)**, communication **not** possible).
 
-**Spectra**
-- A / B / C (or Z) weighting & overall level for octave or ⅓-octave bands
-- Band Workbench: ⅓-octave → octave → overall & weighted level
+## Physical constants (course values)
 
-**Time, exposure & community**
-- `Leq` from levels & durations (units supported), plus `SEL`
-- `Leq` from discrete events (pass-bys)
-- `Leq` & percentile `LN` for a time-varying level (with plot)
-- Occupational noise dose, `L_Aeq` and maximum permissible time
-- Maximum permissible time for a steady level
-- Community day–night level `Ldn`
+| Quantity | Symbol | Value |
+|---|---|---|
+| Reference sound pressure | `p_ref` | 2 × 10⁻⁵ Pa |
+| Reference sound power | `W_ref` | 1 × 10⁻¹² W |
+| Reference sound intensity | `I_ref` | 1 × 10⁻¹² W/m² |
+| Characteristic impedance of air | `ρc` | 415 rayls |
+| Speed of sound (20 °C) | `c` | 343 m/s |
 
-**Perception & statistics**
-- Loudness: phons ↔ sones
-- Speech interference level (PSIL) & voice effort
-- `SEL` ↔ `Leq`; sorting fluctuating-noise values into terms
+They live in `acoustics.constants`.
 
-**Insulation & mufflers**
-- Mass-law transmission loss
-- Interface impedance ratio & transmission/reflection coefficients
-- TL from a transmission coefficient
-- Panel resonance frequency
-- Muffler sudden area change & expansion-chamber TL
-- TL / IL / NR level difference
+## Coverage
 
-**Reference**
-- A / B / C weighting network table (IEC 61672 family)
+Every calculator prints the substituted formula and working alongside the
+answer. Library functions are in `+acoustics/`.
 
-## Frequency Weighting Data
+| Topic | Calculators | Key library functions |
+|---|---|---|
+| **Levels** | SPL ↔ p; Lw ↔ W; LI and I = p²/ρc; radiated power W = I·4πr²/Q; peak ↔ RMS; combine tones; PSD → RMS | `splPressure`, `powerLevel`, `intensityLevel`, `radiatedPower`, `peakToRms`, `psdToRms` |
+| **Combine** | Energy-sum levels; N identical sources; increase from more sources; error from larger-signal-only; max sources under a limit | `combineLevels`, `nIdenticalSources`, `increaseFromSources`, `largerSignalError`, `maxSourcesUnderLimit` |
+| **Subtract** | Remove background/one source; one of N identical | `subtractLevels`, `oneOfNSources` |
+| **Waves** | c = fλ (+ T, ω, k); speed of sound from temperature; particle velocity/displacement; octave-band edges; pipe modes | `waveRelation`, `speedOfSoundTemp`, `particleMotion`, `octaveBandEdges`, `pipeModes` |
+| **Distance** | Point −6 dB & line −3 dB spreading; solve distance from two levels; Lw ↔ Lp (free field/ground/edge/corner, line) | `distanceAttenuation`, `solveDistance`, `lwLpDistance` |
+| **Room acoustics** | Sabine T60 (solve any term); average absorption ᾱ; room constant R; room equation; absorber ΔLp | `sabineT60`, `averageAbsorption`, `roomConstant`, `roomEquation`, `absorberChange` |
+| **Sound power** | Background K1; environmental K2; Lw from surface SPL; free-field Lw from bands | `backgroundK1`, `environmentalK2`, `soundPowerMeasured`, `lwFromBands` |
+| **Duct → voltage** | Duct sound power → mic voltage (plane-wave cut-on check) | `ductToVoltage` |
+| **Weighting** | A/B/C(/Z) overall level; ⅓-oct → octave band workbench; A/B/C reference table | `weightedOverall`, `bandWorkbench`, `weightingValue`, `weightingTable` |
+| **Leq / time** | Leq from levels+durations (mixed units) + SEL; discrete events; time-varying Leq + percentile LN | `leqFromLevels`, `leqFromEvents`, `percentileLevel` |
+| **Noise dose** | LAeq, dose %, OH&S max time; max time for a steady level | `noiseDose`, `maxPermissibleTime` |
+| **Loudness** | phons ↔ sones | `phonToSone`, `soneToPhon` |
+| **Speech / PSIL** | SIL; required A-weighted voice level VL_A (Unit 5 Eq 5.6); Table 5.2 effort + communication verdict vs 88 dB(A) | `speechInterferenceLevel`, `voiceLevelA` |
+| **Community** | Day–night level Ldn | `dayNightLevel` |
+| **Stats / SEL** | SEL ↔ Leq; sort values into terms | `selFromLeq` |
+| **Insulation (TL)** | Mass-law TL; interface impedance & coefficients; TL from α_t; panel resonance | `massLawTL`, `interfaceImpedance`, `tlFromCoefficient`, `panelResonance` |
+| **Mufflers** | Sudden area change; expansion-chamber TL; TL/IL/NR level difference | `mufflerAreaChange`, `expansionChamberTL`, `levelDifference` |
 
-The A/B/C weighting values are based on the IEC 61672 family and cover 1/3-octave
-centre frequencies from 25 Hz to 20 kHz (see `acousticsData` at the bottom of
-`AcousticsApp.m`).
+### Speech / voice-effort reference (Unit 5)
 
-## Project Layout
+`voiceLevelA(SIL, r)` applies **VL_A ≥ (4/3)(SIL + 20·log₁₀ r) − 36** and
+classifies the required effort against the **Table 5.2** voice-effort levels,
+declaring communication impossible above the 88 dB(A) peak-shouting limit:
+
+| Effort | A-weighted voice level, dB(A) |
+|---|---|
+| Normal | 57 |
+| Raised | 65 |
+| Very loud | 74 |
+| Shouting | 82 |
+| Peak shouting (max) | 88 |
+
+## Project layout
 
 ```
-AcousticsApp.m   Single-file MATLAB class implementing the GUI and all calculators
-LICENSE          License
-README.md        This file
+AcousticsApp.m                     Search-driven GUI; each calculator calls +acoustics
++acoustics/                        Function library — one .m file per formula
+    constants.m, weightingTable.m, splPressure.m, ... (54 files)
+tests/acousticsValidationTest.m    matlab.unittest suite over the worked answers
+runAcousticsTests.m                Convenience runner (= runtests('tests'))
+README.md                          This file
+LICENSE
 ```
+
+## Notes & assumptions
+
+- Two validation datasets (the spectrum behind **77.5 dB(A)** and the schedule
+  behind **LAeq,24h = 70.55**) were reconstructed to reproduce the target values
+  exactly, since the source web-app data was not accessible from this repo. The
+  formulae and constants otherwise mirror the ported web app verbatim.
+- Mass-law TL uses the ported constant: `TL = 20·log₁₀(M·f) − 42.4`.
 
 ## License
 
-See [LICENSE](LICENSE) for details.
+See [LICENSE](LICENSE).
