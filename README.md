@@ -88,12 +88,12 @@ answer. Library functions are in `+acoustics/`.
 
 | Topic | Calculators | Key library functions |
 |---|---|---|
-| **Levels** | SPL ↔ p; Lw ↔ W; LI and I = p²/ρc; radiated power W = I·4πr²/Q; peak ↔ RMS; combine tones; PSD → RMS | `splPressure`, `powerLevel`, `intensityLevel`, `radiatedPower`, `peakToRms`, `psdToRms` |
+| **Levels** | SPL ↔ p; Lw ↔ W; LI and I = p²/ρc; **radiated power W = I·4πr²/Q (from intensity _or_ peak pressure)**; peak ↔ RMS; combine tones; PSD → RMS | `splPressure`, `powerLevel`, `intensityLevel`, `radiatedPower`, `peakToRms`, `psdToRms` |
 | **Combine** | Energy-sum levels; N identical sources; increase from more sources; error from larger-signal-only; max sources under a limit | `combineLevels`, `nIdenticalSources`, `increaseFromSources`, `largerSignalError`, `maxSourcesUnderLimit` |
 | **Subtract** | Remove background/one source; one of N identical | `subtractLevels`, `oneOfNSources` |
 | **Waves** | c = fλ (+ T, ω, k); speed of sound from temperature; particle velocity/displacement; octave-band edges; pipe modes | `waveRelation`, `speedOfSoundTemp`, `particleMotion`, `octaveBandEdges`, `pipeModes` |
 | **Distance** | Point −6 dB & line −3 dB spreading; solve distance from two levels; Lw ↔ Lp (free field/ground/edge/corner, line) | `distanceAttenuation`, `solveDistance`, `lwLpDistance` |
-| **Room acoustics** | Sabine T60 (solve any term); average absorption ᾱ; room constant R; room equation; absorber ΔLp | `sabineT60`, `averageAbsorption`, `roomConstant`, `roomEquation`, `absorberChange` |
+| **Room acoustics** | Sabine T60 (solve any term); average absorption ᾱ; room constant R; room equation; absorber ΔLp; **plant room (α-driven surface treatment, per-band Lp = Lw + 10·log₁₀(4/R), before/after coating)**; **reverberation test room (T60-driven, exact ⟨p²⟩ = 4ρc·W/R, empty vs furnished)** | `sabineT60`, `averageAbsorption`, `roomConstant`, `roomEquation`, `absorberChange`, `plantRoom`, `reverbTestRoom` |
 | **Sound power** | Background K1; environmental K2; Lw from surface SPL; free-field Lw from bands | `backgroundK1`, `environmentalK2`, `soundPowerMeasured`, `lwFromBands` |
 | **Duct → voltage** | Duct sound power → mic voltage (plane-wave cut-on check) | `ductToVoltage` |
 | **Weighting** | A/B/C(/Z) overall level; ⅓-oct → octave band workbench; A/B/C reference table | `weightedOverall`, `bandWorkbench`, `weightingValue`, `weightingTable` |
@@ -125,7 +125,7 @@ declaring communication impossible above the 88 dB(A) peak-shouting limit:
 ```
 AcousticsApp.m                     Search-driven GUI; each calculator calls +acoustics
 +acoustics/                        Function library — one .m file per formula
-    constants.m, weightingTable.m, splPressure.m, ... (54 files)
+    constants.m, weightingTable.m, splPressure.m, plantRoom.m, ... (56 files)
 tests/acousticsValidationTest.m    matlab.unittest suite over the worked answers
 runAcousticsTests.m                Convenience runner (= runtests('tests'))
 README.md                          This file

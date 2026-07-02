@@ -92,6 +92,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Levels: Sound intensity level LI','li intensity i=p2/rhoc pressure level reference convert', @app.buildLI};
             c(end+1,:) = {'Levels: Peak <-> RMS & combine tones','peak rms amplitude p/sqrt2 combine quadrature pressures tones total', @app.buildRMS};
             c(end+1,:) = {'Levels: PSD -> RMS pressure','psd power spectral density pa2/hz integrate band trapezoid mean square spectrum', @app.buildPSD};
+            c(end+1,:) = {'Levels: Radiated power (point source)','radiated power intensity pressure w=i*s 4 pi r2 q directivity free field hemisphere point source lw', @app.buildRadiated};
 
             c(end+1,:) = {'Combine: add sound levels','combine add sum total incoherent energy decibel sources', @app.buildCombine};
             c(end+1,:) = {'Combine: N identical sources','n identical sources machines 10log10 total combine', @app.buildNIdentical};
@@ -116,6 +117,8 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Room: room constant R','room constant r absorption alpha surface', @app.buildRoomConst};
             c(end+1,:) = {'Room: room equation Lp from Lw','room equation lp lw direct reverberant field directivity q distance', @app.buildRoomEq};
             c(end+1,:) = {'Room: reverberant change (add/remove panels)','reverberant change add remove panels absorber suspended office treatment band', @app.buildReverb};
+            c(end+1,:) = {'Room: plant room (surface treatment)','plant room machine motor coat ceiling absorption alpha reverberant field surface treatment reduction dba band', @app.buildPlant};
+            c(end+1,:) = {'Room: reverberation test room (mean-square p)','reverberation test room t60 mean square pressure empty furnished absorption exact rhoc reduction dba band', @app.buildRevRoom};
 
             c(end+1,:) = {'Power: background correction K1','sound power k1 background correction mean spl', @app.buildK1};
             c(end+1,:) = {'Power: environmental correction K2','sound power k2 environmental correction absorption surface', @app.buildK2};
@@ -332,6 +335,31 @@ classdef AcousticsApp < handle
             R = acoustics.psdToRms(f1, f2, s1, s2);
             app.W.out.Value = [{ sprintf('Mean-square p^2 = %.4g Pa^2 · p_rms = %.4g Pa · SPL = %.2f dB', ...
                 R.meanSquare, R.prms, R.spl), '', 'WORKING' }, R.steps];
+        end
+
+        function buildRadiated(app)
+            gl = app.form(7);
+            app.W.src = app.ddField(gl,1,'Input', ...
+                {'Peak pressure P (Pa)','Intensity I (W/m^2)'});
+            app.W.val = app.numField(gl,2,'Value (P in Pa, or I in W/m^2)',25);
+            app.W.r   = app.numField(gl,3,'Distance r (m)',2);
+            app.W.Q   = app.ddField(gl,4,'Directivity Q', ...
+                {'1 - free field','2 - hemisphere','4 - edge','8 - corner'});
+            app.note(gl,5,'S = 4*pi*r^2/Q · from P: p_rms=P/sqrt2, I=p_rms^2/rhoc · W = I*S · Lw = 10*log10(W/1e-12)');
+            app.goButton(gl,6,@(o,e) app.runRadiated());
+            app.W.out = app.resultBox(gl,7);
+        end
+        function runRadiated(app)
+            r=app.W.r.Value; Q=str2double(app.W.Q.Value(1)); v=app.W.val.Value;
+            if ~(r>0), app.W.out.Value = {'Distance r must be > 0.'}; return; end
+            if ~(v>0), app.W.out.Value = {'Input value must be > 0.'}; return; end
+            if startsWith(app.W.src.Value,'Peak')
+                R = acoustics.radiatedPower(r,'P',v,'Q',Q);
+            else
+                R = acoustics.radiatedPower(r,'I',v,'Q',Q);
+            end
+            app.W.out.Value = [{ sprintf('I = %.4g W/m^2 · W = %.4g W · Lw = %.2f dB', ...
+                R.I, R.W, R.Lw), '', 'WORKING' }, R.steps];
         end
 
         % ================= COMBINE =================
@@ -738,6 +766,89 @@ classdef AcousticsApp < handle
                 'dLp = 10*log10(A1/A2) · new Lp = Lp + dLp', ...
                 'overall = 10*log10( sum 10^((Lp+W)/10) )' }];
             app.W.out.Value = lines;
+        end
+
+        function buildPlant(app)
+            gl = uigridlayout(app.Content,[5 2]);
+            gl.RowHeight = {32,'1x',44,32,150}; gl.ColumnWidth = {200,'1x'};
+            sub = uigridlayout(gl,[1 8]); sub.Layout.Row=1; sub.Layout.Column=[1 2];
+            sub.Padding=[0 0 0 0]; sub.ColumnWidth={90,'1x','1x','1x',130,'1x'};
+            uilabel(sub,'Text','Room L,W,H (m)');
+            app.W.L=uieditfield(sub,'numeric','Value',11.6);
+            app.W.Wd=uieditfield(sub,'numeric','Value',5.0);
+            app.W.H=uieditfield(sub,'numeric','Value',5.0);
+            uilabel(sub,'Text','Coated area Scoat (m^2)');
+            app.W.Scoat=uieditfield(sub,'numeric','Value',58);
+            f=[63 125 250 500 1000 2000 4000 8000]';
+            app.W.tbl=uitable(gl,'ColumnName',{'Freq (Hz)','Lw combined (dB)','alpha base','alpha coat'}, ...
+                'ColumnEditable',[false true true true], ...
+                'Data',[num2cell(f), repmat({[]},numel(f),3)]);
+            app.W.tbl.Layout.Row=2; app.W.tbl.Layout.Column=[1 2];
+            app.note(gl,3,'Per band enter the combined machine Lw and the bare/coated alpha. S = 2(LW+LH+WH). R = S*alpha/(1-alpha), Lp = Lw + 10*log10(4/R). After: alpha_bar = [Scoat*alphaCoat + (S-Scoat)*alphaBase]/S.');
+            b=uibutton(gl,'Text','Compute','ButtonPushedFcn',@(o,e) app.runPlant());
+            b.Layout.Row=4; b.Layout.Column=[1 2];
+            app.W.out=uitextarea(gl,'Editable','off','FontName','monospaced');
+            app.W.out.Layout.Row=5; app.W.out.Layout.Column=[1 2];
+        end
+        function runPlant(app)
+            L=app.W.L.Value; Wd=app.W.Wd.Value; H=app.W.H.Value; Scoat=app.W.Scoat.Value;
+            if ~(L>0&&Wd>0&&H>0), app.W.out.Value={'Room dimensions must be > 0.'}; return; end
+            S=2*(L*Wd+L*H+Wd*H);
+            d=app.W.tbl.Data; f=[]; Lw=[]; ab=[]; ac=[];
+            for i=1:size(d,1)
+                lw=d{i,2}; a1=d{i,3}; a2=d{i,4};
+                if isempty(lw)||(isnumeric(lw)&&isnan(lw)), continue; end
+                if isempty(a1)||isempty(a2), app.W.out.Value={sprintf('Band %g Hz needs Lw, alpha base and alpha coat.',d{i,1})}; return; end
+                f(end+1)=d{i,1}; Lw(end+1)=lw; ab(end+1)=a1; ac(end+1)=a2; %#ok<AGROW>
+            end
+            if isempty(f), app.W.out.Value={'Enter at least one band (Lw, alpha base, alpha coat).'}; return; end
+            try
+                R=acoustics.plantRoom(f, Lw', ab, ac, Scoat, S);
+            catch me
+                app.W.out.Value={me.message}; return;
+            end
+            app.W.out.Value=[{ sprintf('S = %.1f m^2 · overall Lw = %.2f dB', S, R.LwOverall), ...
+                sprintf('Before = %.1f dB(A) · After = %.1f dB(A) · Reduction = %.1f dB(A)', ...
+                    R.dBAbefore, R.dBAafter, R.reduction), '', 'WORKING' }, R.steps];
+        end
+
+        function buildRevRoom(app)
+            gl = uigridlayout(app.Content,[5 2]);
+            gl.RowHeight = {32,'1x',44,32,150}; gl.ColumnWidth = {200,'1x'};
+            sub = uigridlayout(gl,[1 6]); sub.Layout.Row=1; sub.Layout.Column=[1 2];
+            sub.Padding=[0 0 0 0]; sub.ColumnWidth={70,'1x',70,'1x',110,'1x'};
+            uilabel(sub,'Text','V (m^3)'); app.W.V=uieditfield(sub,'numeric','Value',207);
+            uilabel(sub,'Text','S (m^2)'); app.W.S=uieditfield(sub,'numeric','Value',220);
+            uilabel(sub,'Text','rho c (rayls)'); app.W.rc=uieditfield(sub,'numeric','Value',415);
+            f=[250 500 1000]';
+            app.W.tbl=uitable(gl,'ColumnName',{'Freq (Hz)','Lw (dB)','T60 empty (s)','T60 furnished (s)'}, ...
+                'ColumnEditable',[false true true true], ...
+                'Data',[num2cell(f), repmat({[]},numel(f),3)]);
+            app.W.tbl.Layout.Row=2; app.W.tbl.Layout.Column=[1 2];
+            app.note(gl,3,'A=0.161V/T60, alpha=A/S, R=A/(1-alpha), W=1e-12*10^(Lw/10), <p^2>=4*rho c*W/R (exact rho c), Lp=10*log10(<p^2>/p_ref^2).');
+            b=uibutton(gl,'Text','Compute','ButtonPushedFcn',@(o,e) app.runRevRoom());
+            b.Layout.Row=4; b.Layout.Column=[1 2];
+            app.W.out=uitextarea(gl,'Editable','off','FontName','monospaced');
+            app.W.out.Layout.Row=5; app.W.out.Layout.Column=[1 2];
+        end
+        function runRevRoom(app)
+            V=app.W.V.Value; S=app.W.S.Value; rc=app.W.rc.Value;
+            if ~(V>0&&S>0&&rc>0), app.W.out.Value={'V, S and rho c must be > 0.'}; return; end
+            d=app.W.tbl.Data; f=[]; Lw=[]; te=[]; tf=[];
+            for i=1:size(d,1)
+                lw=d{i,2}; e=d{i,3}; fu=d{i,4};
+                if isempty(lw)||(isnumeric(lw)&&isnan(lw)), continue; end
+                if isempty(e)||isempty(fu), app.W.out.Value={sprintf('Band %g Hz needs Lw and both T60 values.',d{i,1})}; return; end
+                f(end+1)=d{i,1}; Lw(end+1)=lw; te(end+1)=e; tf(end+1)=fu; %#ok<AGROW>
+            end
+            if isempty(f), app.W.out.Value={'Enter at least one band (Lw, T60 empty, T60 furnished).'}; return; end
+            try
+                R=acoustics.reverbTestRoom(f, Lw, te, tf, V, S, 'rhoc', rc);
+            catch me
+                app.W.out.Value={me.message}; return;
+            end
+            app.W.out.Value=[{ sprintf('Empty = %.1f dB(A) · Furnished = %.1f dB(A) · Reduction = %.1f dB(A)', ...
+                R.dBAempty, R.dBAfurn, R.reduction), '', 'WORKING' }, R.steps];
         end
 
         % ================= SOUND POWER =================

@@ -151,8 +151,38 @@ function testDistancePointAndLine(t)
     verifyEqual(t, R.line,  100 - 10*log10(2), 'AbsTol', 1e-9);
 end
 
-function testRadiatedPower(t)
+function testRadiatedPowerFromIntensity(t)
     % I over a full sphere at r with Q=1
-    R = acoustics.radiatedPower(1e-6, 2, 'Q', 1);
+    R = acoustics.radiatedPower(2, 'I', 1e-6, 'Q', 1);
     verifyEqual(t, R.W, 1e-6*4*pi*4, 'RelTol', 1e-9);
+end
+
+function testRadiatedPowerFromPressure(t)
+    % Web-app case: P = 25 Pa, r = 2 m, Q = 1 -> I = 0.753, W = 37.85 W
+    R = acoustics.radiatedPower(2, 'P', 25, 'Q', 1);
+    verifyEqual(t, R.I, 0.753, 'AbsTol', 0.001);
+    verifyEqual(t, R.W, 37.85, 'AbsTol', 0.02);
+end
+
+% ---- room calculators: formula-level checks -----------------------------
+% (The exact web-app "plant room" and "reverberation test room" example
+% datasets live in data.js; those regression tests are added once the input
+% data is supplied. These hand-computable cases verify the implementations.)
+
+function testPlantRoomSingleBand(t)
+    % 1 band, 2 machines at 90 dB -> combined 93.01 dB; coat 50 of 200 m^2.
+    R = acoustics.plantRoom(500, [90 90], 0.02, 0.8, 50, 200);
+    verifyEqual(t, R.Lw(1), 93.0103, 'AbsTol', 0.01);      % combined power level
+    verifyEqual(t, R.LpBefore(1), 92.9226, 'AbsTol', 0.01);
+    verifyEqual(t, R.LpAfter(1), 81.6449, 'AbsTol', 0.01);
+    verifyEqual(t, R.reduction, 11.2776, 'AbsTol', 0.01);  % single band -> weighting cancels
+end
+
+function testReverbTestRoomSingleBand(t)
+    % Exact rho c: <p^2> = 4*rho c*W/R.  Lw = 100 dB, V = S = 200, T60 2 -> 1 s.
+    R = acoustics.reverbTestRoom(1000, 100, 2, 1, 200, 200, 'rhoc', 415);
+    verifyEqual(t, R.Aempty(1), 16.1, 'AbsTol', 0.001);
+    verifyEqual(t, R.p2empty(1), 0.9481, 'AbsTol', 0.001);
+    verifyEqual(t, R.LpEmpty(1), 93.7477, 'AbsTol', 0.01);
+    verifyEqual(t, R.reduction, 3.4082, 'AbsTol', 0.01);
 end
