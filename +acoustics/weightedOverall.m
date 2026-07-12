@@ -19,7 +19,7 @@ function R = weightedOverall(freqs, levels, net)
     if numel(freqs) ~= numel(levels)
         error('acoustics:weightedOverall:size', 'freqs and levels must match.');
     end
-    R.weights = arrayfun(@(f) weightingValue(f, net), freqs);
+    R.weights = arrayfun(@(f) acoustics.weightingValue(f, net), freqs);
     R.bandWeighted = levels + R.weights;
     R.linear = 10*log10(sum(10.^(levels/10)));
     R.weighted = 10*log10(sum(10.^(R.bandWeighted/10)));

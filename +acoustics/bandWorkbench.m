@@ -27,7 +27,7 @@ function R = bandWorkbench(thirds, levels, net)
     end
     R.octaveFreq = octF; R.octaveSPL = octL;
     R.overall = 10*log10(sum(10.^(octL/10)));
-    w = arrayfun(@(f) weightingValue(f, net), octF);
+    w = arrayfun(@(f) acoustics.weightingValue(f, net), octF);
     R.weighted = 10*log10(sum(10.^((octL + w)/10)));
     tag = 'dB'; if net ~= 'Z', tag = sprintf('dB(%c)', net); end
     R.steps = [lines, { ...

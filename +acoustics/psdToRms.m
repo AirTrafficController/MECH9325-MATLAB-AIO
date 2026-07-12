@@ -14,7 +14,7 @@ function R = psdToRms(f1, f2, S1, S2)
     if ~(f2 > f1)
         error('acoustics:psdToRms:band', 'Upper frequency must exceed lower frequency.');
     end
-    C = constants();
+    C = acoustics.constants();
     bw = f2 - f1;
     R.meanSquare = (S1 + S2)/2 * bw;
     R.prms = sqrt(R.meanSquare);

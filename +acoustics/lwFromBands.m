@@ -18,8 +18,8 @@ function R = lwFromBands(freqs, levels, S, opts)
     if numel(freqs) ~= numel(levels)
         error('acoustics:lwFromBands:size', 'freqs and levels must match.');
     end
-    C = constants();
-    w = arrayfun(@(f) weightingValue(f, opts.net), freqs);
+    C = acoustics.constants();
+    w = arrayfun(@(f) acoustics.weightingValue(f, opts.net), freqs);
     lin = levels - w;
     R.Lp = 10*log10(sum(10.^(lin/10)));
     p2 = C.PREF^2 * 10^(R.Lp/10);

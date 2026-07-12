@@ -13,7 +13,7 @@ function w = weightingValue(freq, net)
     if net == 'Z'
         w = 0; return;
     end
-    T = weightingTable();
+    T = acoustics.weightingTable();
     col = struct('A',2,'B',3,'C',4);
     row = find(abs(T(:,1) - freq) < 1e-6, 1);
     if isempty(row)

@@ -12,7 +12,7 @@ function R = intensityLevel(opts)
         opts.I double {mustBePositiveOrNaN(opts.I)} = NaN
         opts.p double {mustBePositiveOrNaN(opts.p)} = NaN
     end
-    C = constants();
+    C = acoustics.constants();
     hasI = ~isnan(opts.I);
     hasP = ~isnan(opts.p);
     if hasI == hasP
