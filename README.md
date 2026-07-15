@@ -47,6 +47,9 @@ cell array:
 acoustics.splPressure('p', 1).Lp            % 93.98 dB   (1 Pa)
 acoustics.powerLevel('W', 0.5).Lw           % 116.99 dB  (0.5 W)
 acoustics.speedOfSoundTemp(20).c            % 343.2 m/s
+acoustics.speedOfSoundTemp([],'d',8,'t',0.020).Tc   % 125 C (time-of-flight)
+acoustics.particleMotion([],100,'urms',0.11).spl    % 127.2 dB (air)
+acoustics.pipeModes(5,'ends',"open-open",'n',3).omega  % [215.5 431 646.5] rad/s
 acoustics.phonToSone(80).sones              % 16 sones
 acoustics.sabineT60('V',200,'S',240,'alpha',0.15).T60
 
@@ -91,7 +94,7 @@ answer. Library functions are in `+acoustics/`.
 | **Levels** | SPL ↔ p; Lw ↔ W; LI and I = p²/ρc; **radiated power W = I·4πr²/Q (from intensity _or_ peak pressure)**; peak ↔ RMS; combine tones; PSD → RMS | `splPressure`, `powerLevel`, `intensityLevel`, `radiatedPower`, `peakToRms`, `psdToRms` |
 | **Combine** | Energy-sum levels; N identical sources; increase from more sources; error from larger-signal-only; max sources under a limit | `combineLevels`, `nIdenticalSources`, `increaseFromSources`, `largerSignalError`, `maxSourcesUnderLimit` |
 | **Subtract** | Remove background/one source; one of N identical | `subtractLevels`, `oneOfNSources` |
-| **Waves** | c = fλ (+ T, ω, k); speed of sound from temperature; particle velocity/displacement; octave-band edges; pipe modes | `waveRelation`, `speedOfSoundTemp`, `particleMotion`, `octaveBandEdges`, `pipeModes` |
+| **Waves** | c = fλ (+ T, ω, k); speed of sound ↔ temperature (incl. time-of-flight); particle velocity/displacement/SPL (pressure or rms velocity, air/water reference, just-audible); octave-band edges; pipe modes (open–open / open–closed / closed–closed, f & ω) | `waveRelation`, `speedOfSoundTemp`, `particleMotion`, `octaveBandEdges`, `pipeModes` |
 | **Distance** | Point −6 dB & line −3 dB spreading; solve distance from two levels; Lw ↔ Lp (free field/ground/edge/corner, line) | `distanceAttenuation`, `solveDistance`, `lwLpDistance` |
 | **Room acoustics** | Sabine T60 (solve any term); average absorption ᾱ; room constant R; room equation; absorber ΔLp; **plant room (α-driven surface treatment, per-band Lp = Lw + 10·log₁₀(4/R), before/after coating)**; **reverberation test room (T60-driven, exact ⟨p²⟩ = 4ρc·W/R, empty vs furnished)** | `sabineT60`, `averageAbsorption`, `roomConstant`, `roomEquation`, `absorberChange`, `plantRoom`, `reverbTestRoom` |
 | **Sound power** | Background K1; environmental K2; Lw from surface SPL; free-field Lw from bands | `backgroundK1`, `environmentalK2`, `soundPowerMeasured`, `lwFromBands` |
