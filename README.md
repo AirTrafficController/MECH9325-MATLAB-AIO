@@ -51,6 +51,7 @@ acoustics.speedOfSoundTemp([],'d',8,'t',0.020).Tc   % 125 C (time-of-flight)
 acoustics.particleMotion([],100,'urms',0.11).spl    % 127.2 dB (air)
 acoustics.pipeModes(5,'ends',"open-open",'n',3).omega  % [215.5 431 646.5] rad/s
 acoustics.ductBandPower([106 105 105 94],86).LwTotal   % 87.72 dB (duct radiated power)
+acoustics.hearingProtector(27,'Lceq',99.72).protected  % 72.72 dB(A) (SLC80 method)
 acoustics.phonToSone(80).sones              % 16 sones
 acoustics.sabineT60('V',200,'S',240,'alpha',0.15).T60
 
@@ -102,7 +103,7 @@ answer. Library functions are in `+acoustics/`.
 | **Duct → voltage** | Duct sound power → mic voltage (plane-wave cut-on check); band SPL → per-band intensity & radiated power (W = I·A) + totals | `ductToVoltage`, `ductBandPower` |
 | **Weighting** | A/B/C(/Z) overall level; ⅓-oct → octave band workbench; A/B/C reference table | `weightedOverall`, `bandWorkbench`, `weightingValue`, `weightingTable` |
 | **Leq / time** | Leq from levels+durations (mixed units) + SEL; discrete events; time-varying Leq + percentile LN | `leqFromLevels`, `leqFromEvents`, `percentileLevel` |
-| **Noise dose** | LAeq, dose %, OH&S max time; max time for a steady level | `noiseDose`, `maxPermissibleTime` |
+| **Noise dose** | LAeq, dose %, OH&S max time; max time for a steady level; hearing-protector SLC80 (L′Aeq = LCeq − SLC80) | `noiseDose`, `maxPermissibleTime`, `hearingProtector` |
 | **Loudness** | phons ↔ sones | `phonToSone`, `soneToPhon` |
 | **Speech / PSIL** | SIL; required A-weighted voice level VL_A (Unit 5 Eq 5.6); Table 5.2 effort + communication verdict vs 88 dB(A) | `speechInterferenceLevel`, `voiceLevelA` |
 | **Community** | Day–night level Ldn | `dayNightLevel` |

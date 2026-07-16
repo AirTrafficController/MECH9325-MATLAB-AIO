@@ -110,6 +110,19 @@ function testDuctBandPower(t)
     verifyEqual(t, R.LwTotal, 87.72,    'AbsTol', 0.05);
 end
 
+function testHearingProtectorSLC80(t)
+    % SLC80 subtracts from L_Ceq (AS/NZS 1269.3): 99.72 - 27 = 72.72 dB(A)
+    R = acoustics.hearingProtector(27, 'Lceq', 99.72);
+    verifyEqual(t, R.protected, 72.72, 'AbsTol', 0.01);
+end
+
+function testHearingProtectorFromBands(t)
+    % C-weighting is 0 dB at 250 & 500 Hz, so Lceq = linear combine of 99,95
+    R = acoustics.hearingProtector(27, 'bands', [250 99; 500 95]);
+    verifyEqual(t, R.Lceq, 100.4553, 'AbsTol', 0.01);   % 10*log10(10^9.9+10^9.5)
+    verifyEqual(t, R.protected, R.Lceq - 27, 'AbsTol', 1e-9);
+end
+
 % ---- weighting: overall dB(A) = 77.5 ------------------------------------
 
 function testAWeightedTotalIs77p5(t)

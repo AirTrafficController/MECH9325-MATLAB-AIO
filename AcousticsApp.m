@@ -137,6 +137,7 @@ classdef AcousticsApp < handle
 
             c(end+1,:) = {'Noise Dose & max time','noise dose ohs 85 db exchange permissible time worker shift criterion', @app.buildDose};
             c(end+1,:) = {'Max permissible time (steady level)','max permissible time steady level exchange rate criterion ohs', @app.buildMaxTime};
+            c(end+1,:) = {'Hearing protector (SLC80)','hearing protector ear muff earmuff slc80 nrr c-weighted lceq protected attenuation as/nzs 1269', @app.buildProtector};
 
             c(end+1,:) = {'Loudness: phons -> sones','loudness phon sone equal loudness contour convert subjective', @app.buildPh2S};
             c(end+1,:) = {'Loudness: sones -> phons','loudness sone phon convert log2', @app.buildS2Ph};
@@ -1311,6 +1312,32 @@ classdef AcousticsApp < handle
             app.W.out.Value = [{ sprintf('T = %.3f h  (%s) - level %s the %g dB(A) criterion.', ...
                 R.T, fmtHM(R.T), ternary(R.exceeds,'exceeds','is within'), Lc), ...
                 '', 'WORKING' }, R.steps];
+        end
+        function buildProtector(app)
+            gl = uigridlayout(app.Content,[6 2]);
+            gl.RowHeight = {32,32,20,'1x',32,140}; gl.ColumnWidth = {220,'1x'};
+            app.W.Lc  = app.txtField(gl,1,'C-weighted level Lceq (dB(C)), blank to compute','99.72');
+            app.W.slc = app.numField(gl,2,'Protector rating SLC80 (dB)',27);
+            app.note(gl,3,'Or octave-band levels "freq, level" per line to get Lceq:');
+            app.W.list = uitextarea(gl,'Value',{'250, 99','500, 95'});
+            app.W.list.Layout.Row = 4; app.W.list.Layout.Column = [1 2];
+            app.goButton(gl,5,@(o,e) app.runProtector());
+            app.W.out = app.resultBox(gl,6);
+        end
+        function runProtector(app)
+            slc = app.W.slc.Value;
+            if ~isempty(strtrim(app.W.Lc.Value))
+                Lceq = app.pnum(app.W.Lc);
+                if isnan(Lceq), app.W.out.Value = {'Lceq must be numeric.'}; return; end
+                R = acoustics.hearingProtector(slc, 'Lceq', Lceq);
+            else
+                M = app.parseRows(app.W.list.Value, 2);
+                if isempty(M), app.W.out.Value = {'Enter Lceq, or "freq, level" band rows.'}; return; end
+                R = acoustics.hearingProtector(slc, 'bands', M);
+                app.W.Lc.Value = sprintf('%.2f', R.Lceq);
+            end
+            app.W.out.Value = [{ sprintf('Protected L_Aeq = %.2f dB(A)  (Lceq %.2f dB(C) - SLC80 %g dB)', ...
+                R.protected, R.Lceq, slc), '', 'WORKING' }, R.steps];
         end
 
         % ================= LOUDNESS =================
