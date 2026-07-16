@@ -50,6 +50,7 @@ acoustics.speedOfSoundTemp(20).c            % 343.2 m/s
 acoustics.speedOfSoundTemp([],'d',8,'t',0.020).Tc   % 125 C (time-of-flight)
 acoustics.particleMotion([],100,'urms',0.11).spl    % 127.2 dB (air)
 acoustics.pipeModes(5,'ends',"open-open",'n',3).omega  % [215.5 431 646.5] rad/s
+acoustics.ductBandPower([106 105 105 94],86).LwTotal   % 87.72 dB (duct radiated power)
 acoustics.phonToSone(80).sones              % 16 sones
 acoustics.sabineT60('V',200,'S',240,'alpha',0.15).T60
 
@@ -98,7 +99,7 @@ answer. Library functions are in `+acoustics/`.
 | **Distance** | Point −6 dB & line −3 dB spreading; solve distance from two levels; Lw ↔ Lp (free field/ground/edge/corner, line) | `distanceAttenuation`, `solveDistance`, `lwLpDistance` |
 | **Room acoustics** | Sabine T60 (solve any term); average absorption ᾱ; room constant R; room equation; absorber ΔLp; **plant room (α-driven surface treatment, per-band Lp = Lw + 10·log₁₀(4/R), before/after coating)**; **reverberation test room (T60-driven, exact ⟨p²⟩ = 4ρc·W/R, empty vs furnished)** | `sabineT60`, `averageAbsorption`, `roomConstant`, `roomEquation`, `absorberChange`, `plantRoom`, `reverbTestRoom` |
 | **Sound power** | Background K1; environmental K2; Lw from surface SPL; free-field Lw from bands | `backgroundK1`, `environmentalK2`, `soundPowerMeasured`, `lwFromBands` |
-| **Duct → voltage** | Duct sound power → mic voltage (plane-wave cut-on check) | `ductToVoltage` |
+| **Duct → voltage** | Duct sound power → mic voltage (plane-wave cut-on check); band SPL → per-band intensity & radiated power (W = I·A) + totals | `ductToVoltage`, `ductBandPower` |
 | **Weighting** | A/B/C(/Z) overall level; ⅓-oct → octave band workbench; A/B/C reference table | `weightedOverall`, `bandWorkbench`, `weightingValue`, `weightingTable` |
 | **Leq / time** | Leq from levels+durations (mixed units) + SEL; discrete events; time-varying Leq + percentile LN | `leqFromLevels`, `leqFromEvents`, `percentileLevel` |
 | **Noise dose** | LAeq, dose %, OH&S max time; max time for a steady level | `noiseDose`, `maxPermissibleTime` |

@@ -99,6 +99,17 @@ function testPipeOpenOpenModes(t)
     verifyEqual(t, R.omega, 2*pi*[34.3 68.6 102.9],  'AbsTol', 0.5);
 end
 
+function testDuctBandPower(t)
+    % 86 mm pipe, four octave bands -> total SPL 110.24 dB, total Lw 87.72 dB
+    R = acoustics.ductBandPower([106 105 105 94], 86);
+    verifyEqual(t, R.area, pi*0.086^2/4, 'AbsTol', 1e-9);
+    verifyEqual(t, R.prms(1), 3.9905,   'AbsTol', 1e-3);
+    verifyEqual(t, R.I(1),    3.837e-2, 'AbsTol', 1e-5);
+    verifyEqual(t, R.W(1),    2.229e-4, 'AbsTol', 1e-7);
+    verifyEqual(t, R.LpTotal, 110.24,   'AbsTol', 0.05);
+    verifyEqual(t, R.LwTotal, 87.72,    'AbsTol', 0.05);
+end
+
 % ---- weighting: overall dB(A) = 77.5 ------------------------------------
 
 function testAWeightedTotalIs77p5(t)

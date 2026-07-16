@@ -126,6 +126,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Power: Lw from free-field band SPLs','sound power lw free field band spl unweight a-weighted hemisphere sphere drill', @app.buildPowerBands};
 
             c(end+1,:) = {'Duct: sound power -> mic voltage','duct pipe microphone voltage sensitivity plane wave intensity rms cut-on', @app.buildDuct};
+            c(end+1,:) = {'Duct: band SPL -> intensity & power','duct pipe band spl octave intensity radiated power cross section area plane wave speaker total sound power level', @app.buildDuctPower};
 
             c(end+1,:) = {'A / B / C Weighting & overall level','weighting a b c dba dbc octave third overall spectrum network', @app.buildWeighting};
             c(end+1,:) = {'Band Workbench (1/3-oct -> octave)','band workbench third octave overall a-weighted spl triplet nine bands', @app.buildBand};
@@ -1030,6 +1031,31 @@ classdef AcousticsApp < handle
             R = acoustics.ductToVoltage(Lw, d, Sdb, 'rho',rho, 'c',c, 'fmax',fmax);
             app.W.out.Value = [{ sprintf('RMS voltage = %.4g V  (%.4g mV)', R.V, R.V*1000), ...
                 '', 'WORKING' }, R.steps];
+        end
+        function buildDuctPower(app)
+            gl = uigridlayout(app.Content,[7 2]);
+            gl.RowHeight = {32,32,32,20,'1x',32,140}; gl.ColumnWidth = {220,'1x'};
+            app.W.d   = app.numField(gl,1,'Pipe diameter d (mm)',86);
+            app.W.rho = app.numField(gl,2,'Air density rho (kg/m^3)',1.21);
+            app.W.c   = app.numField(gl,3,'Sound speed c (m/s)',343);
+            app.note(gl,4,'Band SPLs Lp (dB re 20 uPa), one per line:');
+            app.W.list = uitextarea(gl,'Value',{'106','105','105','94'});
+            app.W.list.Layout.Row = 5; app.W.list.Layout.Column = [1 2];
+            app.goButton(gl,6,@(o,e) app.runDuctPower());
+            app.W.out = app.resultBox(gl,7);
+        end
+        function runDuctPower(app)
+            d=app.W.d.Value; rho=app.W.rho.Value; c=app.W.c.Value;
+            if ~(d>0), app.W.out.Value = {'Pipe diameter must be > 0.'}; return; end
+            if ~(rho>0&&c>0), app.W.out.Value = {'Density and sound speed must be > 0.'}; return; end
+            Lp = app.parseCol(app.W.list.Value);
+            if isempty(Lp), app.W.out.Value = {'Enter at least one band SPL.'}; return; end
+            R = acoustics.ductBandPower(Lp, d, 'rho',rho, 'c',c);
+            lines = arrayfun(@(i) sprintf('Band %d (%.1f dB): p_rms = %.4g Pa, I = %.4g W/m^2, W = %.4g W', ...
+                i, Lp(i), R.prms(i), R.I(i), R.W(i)), 1:numel(Lp), 'UniformOutput', false);
+            lines{end+1} = sprintf('Total SPL = %.2f dB · sum W = %.4g W · Total Lw = %.2f dB', ...
+                R.LpTotal, R.Wtotal, R.LwTotal);
+            app.W.out.Value = [lines, {'', 'WORKING'}, R.steps];
         end
 
         % ================= WEIGHTING =================
