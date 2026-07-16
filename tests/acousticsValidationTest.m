@@ -48,6 +48,81 @@ function testWaveSolvesLambda(t)
     verifyEqual(t, R.lambda, 0.343, 'AbsTol', 1e-6);
 end
 
+function testSpeedToTemperatureInverse(t)
+    % c = 400 m/s -> ~125 C (inverse of the T->c relation)
+    R = acoustics.speedOfSoundTemp([], 'c', 400);
+    verifyEqual(t, R.Tc, 125.0, 'AbsTol', 0.5);
+end
+
+function testTemperatureFromTimeOfFlight(t)
+    % 8 m in 20 ms -> c = 400 m/s, T ~ 125 C
+    R = acoustics.speedOfSoundTemp([], 'd', 8, 't', 0.020);
+    verifyEqual(t, R.c, 400, 'AbsTol', 1e-6);
+    verifyEqual(t, R.Tc, 125.0, 'AbsTol', 0.5);
+end
+
+function testParticleThresholdDisplacement(t)
+    % Just-audible 4 kHz tone (p_rms = 20 uPa) -> xi ~ 2.71 pm
+    R = acoustics.particleMotion(sqrt(2)*2e-5, 4000);
+    verifyEqual(t, R.xi, 2.71e-12, 'AbsTol', 0.05e-12);
+    verifyEqual(t, R.spl, 0, 'AbsTol', 1e-9);   % threshold is 0 dB
+end
+
+function testParticle120HzPeak(t)
+    % 120 Hz plane wave, 1.5 Pa peak, air
+    R = acoustics.particleMotion(1.5, 120);
+    verifyEqual(t, R.I,    2.711e-3, 'AbsTol', 1e-6);
+    verifyEqual(t, R.u,    3.614e-3, 'AbsTol', 1e-6);
+    verifyEqual(t, R.xi,   4.794e-6, 'AbsTol', 1e-9);
+    verifyEqual(t, R.prms, 1.0607,   'AbsTol', 1e-4);
+    verifyEqual(t, R.spl,  94.49,    'AbsTol', 0.01);
+end
+
+function testParticleFromRmsVelocitySPL(t)
+    % u_rms = 0.11 m/s -> SPL in air and water
+    Rair = acoustics.particleMotion([], 100, 'urms', 0.11, 'rhoc', 415, 'pref', 2e-5);
+    verifyEqual(t, Rair.spl, 127.2, 'AbsTol', 0.1);
+    Rwater = acoustics.particleMotion([], 100, 'urms', 0.11, 'rhoc', 1.5e6, 'pref', 1e-6);
+    verifyEqual(t, Rwater.spl, 224.3, 'AbsTol', 0.1);
+end
+
+function testPipeModesUnchangedDefault(t)
+    % Default open-closed pipe still gives (2n-1)c/4L
+    R = acoustics.pipeModes(0.5);
+    verifyEqual(t, R.f(1), 343/(4*0.5), 'AbsTol', 1e-6);
+end
+
+function testPipeOpenOpenModes(t)
+    % 5 m open-open pipe -> f_n = n c / 2L, omega = 2 pi f
+    R = acoustics.pipeModes(5, 'ends', "open-open", 'n', 3);
+    verifyEqual(t, R.f,     [34.3 68.6 102.9],       'AbsTol', 0.05);
+    verifyEqual(t, R.omega, 2*pi*[34.3 68.6 102.9],  'AbsTol', 0.5);
+end
+
+function testDuctBandPower(t)
+    % 86 mm pipe, four octave bands -> total SPL 110.24 dB, total Lw 87.72 dB
+    R = acoustics.ductBandPower([106 105 105 94], 86);
+    verifyEqual(t, R.area, pi*0.086^2/4, 'AbsTol', 1e-9);
+    verifyEqual(t, R.prms(1), 3.9905,   'AbsTol', 1e-3);
+    verifyEqual(t, R.I(1),    3.837e-2, 'AbsTol', 1e-5);
+    verifyEqual(t, R.W(1),    2.229e-4, 'AbsTol', 1e-7);
+    verifyEqual(t, R.LpTotal, 110.24,   'AbsTol', 0.05);
+    verifyEqual(t, R.LwTotal, 87.72,    'AbsTol', 0.05);
+end
+
+function testHearingProtectorSLC80(t)
+    % SLC80 subtracts from L_Ceq (AS/NZS 1269.3): 99.72 - 27 = 72.72 dB(A)
+    R = acoustics.hearingProtector(27, 'Lceq', 99.72);
+    verifyEqual(t, R.protected, 72.72, 'AbsTol', 0.01);
+end
+
+function testHearingProtectorFromBands(t)
+    % C-weighting is 0 dB at 250 & 500 Hz, so Lceq = linear combine of 99,95
+    R = acoustics.hearingProtector(27, 'bands', [250 99; 500 95]);
+    verifyEqual(t, R.Lceq, 100.4553, 'AbsTol', 0.01);   % 10*log10(10^9.9+10^9.5)
+    verifyEqual(t, R.protected, R.Lceq - 27, 'AbsTol', 1e-9);
+end
+
 % ---- weighting: overall dB(A) = 77.5 ------------------------------------
 
 function testAWeightedTotalIs77p5(t)

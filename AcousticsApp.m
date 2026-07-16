@@ -126,6 +126,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Power: Lw from free-field band SPLs','sound power lw free field band spl unweight a-weighted hemisphere sphere drill', @app.buildPowerBands};
 
             c(end+1,:) = {'Duct: sound power -> mic voltage','duct pipe microphone voltage sensitivity plane wave intensity rms cut-on', @app.buildDuct};
+            c(end+1,:) = {'Duct: band SPL -> intensity & power','duct pipe band spl octave intensity radiated power cross section area plane wave speaker total sound power level', @app.buildDuctPower};
 
             c(end+1,:) = {'A / B / C Weighting & overall level','weighting a b c dba dbc octave third overall spectrum network', @app.buildWeighting};
             c(end+1,:) = {'Band Workbench (1/3-oct -> octave)','band workbench third octave overall a-weighted spl triplet nine bands', @app.buildBand};
@@ -136,6 +137,7 @@ classdef AcousticsApp < handle
 
             c(end+1,:) = {'Noise Dose & max time','noise dose ohs 85 db exchange permissible time worker shift criterion', @app.buildDose};
             c(end+1,:) = {'Max permissible time (steady level)','max permissible time steady level exchange rate criterion ohs', @app.buildMaxTime};
+            c(end+1,:) = {'Hearing protector (SLC80)','hearing protector ear muff earmuff slc80 nrr c-weighted lceq protected attenuation as/nzs 1269', @app.buildProtector};
 
             c(end+1,:) = {'Loudness: phons -> sones','loudness phon sone equal loudness contour convert subjective', @app.buildPh2S};
             c(end+1,:) = {'Loudness: sones -> phons','loudness sone phon convert log2', @app.buildS2Ph};
@@ -505,46 +507,102 @@ classdef AcousticsApp < handle
         end
 
         function buildSOS(app)
-            gl = app.form(5);
-            app.W.T = app.numField(gl,1,'Temperature (deg C)',20);
-            app.W.R = app.numField(gl,2,'Gas constant R (J/kg/K)',287);
-            app.W.g = app.numField(gl,3,'gamma',1.4);
-            app.goButton(gl,4,@(o,e) app.runSOS());
-            app.W.out = app.resultBox(gl,5);
+            gl = app.form(9);
+            app.W.T = app.txtField(gl,1,'Temperature (deg C), blank to solve','20');
+            app.W.c = app.txtField(gl,2,'or Speed c (m/s), blank to solve','');
+            app.W.R = app.numField(gl,3,'Gas constant R (J/kg/K)',287);
+            app.W.g = app.numField(gl,4,'gamma',1.4);
+            b1 = uibutton(gl,'Text','Solve','ButtonPushedFcn',@(o,e) app.runSOS());
+            b1.Layout.Row = 5; b1.Layout.Column = [1 2];
+            app.W.d = app.txtField(gl,6,'Time-of-flight: distance d (m)','');
+            app.W.t = app.txtField(gl,7,'travel time t (ms)','');
+            b2 = uibutton(gl,'Text','c from d & t','ButtonPushedFcn',@(o,e) app.runTOF());
+            b2.Layout.Row = 8; b2.Layout.Column = [1 2];
+            app.W.out = app.resultBox(gl,9);
         end
         function runSOS(app)
-            R = acoustics.speedOfSoundTemp(app.W.T.Value, ...
-                'gamma',app.W.g.Value, 'R',app.W.R.Value);
-            app.W.out.Value = [{ sprintf('c = %.2f m/s  (T0 = %.1f K)', R.c, R.T0), ...
+            hasT = ~isempty(strtrim(app.W.T.Value));
+            hasC = ~isempty(strtrim(app.W.c.Value));
+            if hasT == hasC
+                app.W.out.Value = {'Fill exactly one of Temperature / Speed c; leave the other blank.'}; return;
+            end
+            g = app.W.g.Value; Rg = app.W.R.Value;
+            if hasT
+                R = acoustics.speedOfSoundTemp(app.pnum(app.W.T), 'gamma',g, 'R',Rg);
+                app.W.c.Value = sprintf('%.2f', R.c);
+            else
+                R = acoustics.speedOfSoundTemp([], 'c',app.pnum(app.W.c), 'gamma',g, 'R',Rg);
+                app.W.T.Value = sprintf('%.1f', R.Tc);
+            end
+            app.W.out.Value = [{ sprintf('c = %.2f m/s · T = %.1f deg C (T0 = %.1f K)', R.c, R.Tc, R.T0), ...
+                '', 'WORKING' }, R.steps];
+        end
+        function runTOF(app)
+            d = app.pnum(app.W.d); t = app.pnum(app.W.t);
+            if isnan(d) || isnan(t) || d<=0 || t<=0
+                app.W.out.Value = {'Enter positive distance d (m) and travel time t (ms).'}; return;
+            end
+            R = acoustics.speedOfSoundTemp([], 'd',d, 't',t/1000, 'gamma',app.W.g.Value, 'R',app.W.R.Value);
+            app.W.c.Value = sprintf('%.2f', R.c);
+            app.W.T.Value = sprintf('%.1f', R.Tc);
+            app.W.out.Value = [{ sprintf('c = %.2f m/s · T = %.1f deg C', R.c, R.Tc), ...
                 '', 'WORKING' }, R.steps];
         end
 
         function buildParticle(app)
-            gl = app.form(5);
-            app.W.P  = app.numField(gl,1,'Pressure amplitude P (Pa)',2);
-            app.W.f  = app.numField(gl,2,'Frequency f (Hz)',1000);
-            app.W.rc = app.numField(gl,3,'rho c (rayls)',415);
-            app.goButton(gl,4,@(o,e) app.runParticle());
-            app.W.out = app.resultBox(gl,5);
+            gl = app.form(8);
+            app.W.P    = app.txtField(gl,1,'Peak pressure P (Pa), blank to solve','2');
+            app.W.urms = app.txtField(gl,2,'or RMS velocity urms (m/s)','');
+            app.W.f    = app.numField(gl,3,'Frequency f (Hz)',1000);
+            app.W.rc   = app.numField(gl,4,'rho c (rayls: air 415, water 1.5e6)',415);
+            app.W.pref = app.ddField(gl,5,'SPL reference',{'Air - 20 uPa','Water - 1 uPa'});
+            b1 = uibutton(gl,'Text','Compute','ButtonPushedFcn',@(o,e) app.runParticle());
+            b1.Layout.Row = 6; b1.Layout.Column = [1 2];
+            b2 = uibutton(gl,'Text','Just-audible (20 uPa)','ButtonPushedFcn',@(o,e) app.runThreshold());
+            b2.Layout.Row = 7; b2.Layout.Column = [1 2];
+            app.W.out = app.resultBox(gl,8);
         end
         function runParticle(app)
-            R = acoustics.particleMotion(app.W.P.Value, app.W.f.Value, 'rhoc',app.W.rc.Value);
-            app.W.out.Value = [{ sprintf('u = %.4g m/s · xi = %.4g m · I = %.4g W/m^2', ...
-                R.u, R.xi, R.I), '', 'WORKING' }, R.steps];
+            hasP = ~isempty(strtrim(app.W.P.Value));
+            hasU = ~isempty(strtrim(app.W.urms.Value));
+            if hasP == hasU
+                app.W.out.Value = {'Fill exactly one of Pressure P / RMS velocity urms; leave the other blank.'}; return;
+            end
+            f = app.W.f.Value; rc = app.W.rc.Value;
+            pref = 2e-5; if startsWith(app.W.pref.Value,'Water'), pref = 1e-6; end
+            if hasP
+                R = acoustics.particleMotion(app.pnum(app.W.P), f, 'rhoc',rc, 'pref',pref);
+            else
+                R = acoustics.particleMotion([], f, 'urms',app.pnum(app.W.urms), 'rhoc',rc, 'pref',pref);
+                app.W.P.Value = sprintf('%.4g', R.P); app.W.urms.Value = '';
+            end
+            app.W.out.Value = [{ ...
+                sprintf('u = %.4g m/s · urms = %.4g m/s · xi = %.4g m', R.u, R.urms, R.xi), ...
+                sprintf('I = %.4g W/m^2 · prms = %.4g Pa · SPL = %.2f dB', R.I, R.prms, R.spl), ...
+                '', 'WORKING' }, R.steps];
+        end
+        function runThreshold(app)
+            app.W.P.Value = sprintf('%.4g', sqrt(2)*2e-5);
+            app.W.urms.Value = '';
+            app.W.rc.Value = 415;
+            app.W.pref.Value = 'Air - 20 uPa';
+            app.runParticle();
         end
 
         function buildBandEdges(app)
-            gl = uigridlayout(app.Content,[7 2]);
-            gl.RowHeight = {32,32,32,'1x',32,32,'1x'}; gl.ColumnWidth = {220,'1x'};
+            gl = uigridlayout(app.Content,[8 2]);
+            gl.RowHeight = {32,32,32,'1x',32,32,32,'1x'}; gl.ColumnWidth = {220,'1x'};
             app.W.fc = app.numField(gl,1,'Octave band centre fc (Hz)',1000);
             app.W.ty = app.ddField(gl,2,'Band type',{'Octave','1/3 Octave'});
             b1 = uibutton(gl,'Text','Band edges','ButtonPushedFcn',@(o,e) app.runBandEdges());
             b1.Layout.Row = 3; b1.Layout.Column = [1 2];
             app.W.out = app.resultBox(gl,4);
-            app.W.pipeL = app.numField(gl,5,'Pipe length L (m), closed one end',0.5);
+            app.W.pipeL = app.numField(gl,5,'Pipe length L (m)',0.5);
             app.W.pipeC = app.numField(gl,6,'Speed c (m/s)',343);
-            b2 = uibutton(gl,'Text','Natural frequencies  fn=(2n-1)c/4L','ButtonPushedFcn',@(o,e) app.runPipe());
-            b2.Layout.Row = 7; b2.Layout.Column = [1 2];
+            app.W.pipeEnd = app.ddField(gl,7,'End condition', ...
+                {'Open-closed (one end closed)','Open-open (both ends open)','Closed-closed'});
+            b2 = uibutton(gl,'Text','Natural frequencies (f & omega)','ButtonPushedFcn',@(o,e) app.runPipe());
+            b2.Layout.Row = 8; b2.Layout.Column = [1 2];
         end
         function runBandEdges(app)
             fc=app.W.fc.Value;
@@ -557,8 +615,14 @@ classdef AcousticsApp < handle
         function runPipe(app)
             L=app.W.pipeL.Value; c=app.W.pipeC.Value;
             if ~(L>0), app.W.out.Value = {'Length must be > 0.'}; return; end
-            R = acoustics.pipeModes(L,'c',c,'n',4);
-            app.W.out.Value = R.steps;
+            sel = app.W.pipeEnd.Value;
+            if startsWith(sel,'Open-open'), ends = "open-open";
+            elseif startsWith(sel,'Closed-closed'), ends = "closed-closed";
+            else, ends = "open-closed"; end
+            R = acoustics.pipeModes(L,'c',c,'n',3,'ends',ends);
+            lines = arrayfun(@(k) sprintf('n=%d: f = %.2f Hz · w = %.1f rad/s', k, R.f(k), R.omega(k)), ...
+                1:numel(R.f), 'UniformOutput', false);
+            app.W.out.Value = [lines, {'', 'WORKING'}, R.steps];
         end
 
         % ================= DISTANCE =================
@@ -969,6 +1033,31 @@ classdef AcousticsApp < handle
             app.W.out.Value = [{ sprintf('RMS voltage = %.4g V  (%.4g mV)', R.V, R.V*1000), ...
                 '', 'WORKING' }, R.steps];
         end
+        function buildDuctPower(app)
+            gl = uigridlayout(app.Content,[7 2]);
+            gl.RowHeight = {32,32,32,20,'1x',32,140}; gl.ColumnWidth = {220,'1x'};
+            app.W.d   = app.numField(gl,1,'Pipe diameter d (mm)',86);
+            app.W.rho = app.numField(gl,2,'Air density rho (kg/m^3)',1.21);
+            app.W.c   = app.numField(gl,3,'Sound speed c (m/s)',343);
+            app.note(gl,4,'Band SPLs Lp (dB re 20 uPa), one per line:');
+            app.W.list = uitextarea(gl,'Value',{'106','105','105','94'});
+            app.W.list.Layout.Row = 5; app.W.list.Layout.Column = [1 2];
+            app.goButton(gl,6,@(o,e) app.runDuctPower());
+            app.W.out = app.resultBox(gl,7);
+        end
+        function runDuctPower(app)
+            d=app.W.d.Value; rho=app.W.rho.Value; c=app.W.c.Value;
+            if ~(d>0), app.W.out.Value = {'Pipe diameter must be > 0.'}; return; end
+            if ~(rho>0&&c>0), app.W.out.Value = {'Density and sound speed must be > 0.'}; return; end
+            Lp = app.parseCol(app.W.list.Value);
+            if isempty(Lp), app.W.out.Value = {'Enter at least one band SPL.'}; return; end
+            R = acoustics.ductBandPower(Lp, d, 'rho',rho, 'c',c);
+            lines = arrayfun(@(i) sprintf('Band %d (%.1f dB): p_rms = %.4g Pa, I = %.4g W/m^2, W = %.4g W', ...
+                i, Lp(i), R.prms(i), R.I(i), R.W(i)), 1:numel(Lp), 'UniformOutput', false);
+            lines{end+1} = sprintf('Total SPL = %.2f dB · sum W = %.4g W · Total Lw = %.2f dB', ...
+                R.LpTotal, R.Wtotal, R.LwTotal);
+            app.W.out.Value = [lines, {'', 'WORKING'}, R.steps];
+        end
 
         % ================= WEIGHTING =================
         function buildWeighting(app)
@@ -1223,6 +1312,32 @@ classdef AcousticsApp < handle
             app.W.out.Value = [{ sprintf('T = %.3f h  (%s) - level %s the %g dB(A) criterion.', ...
                 R.T, fmtHM(R.T), ternary(R.exceeds,'exceeds','is within'), Lc), ...
                 '', 'WORKING' }, R.steps];
+        end
+        function buildProtector(app)
+            gl = uigridlayout(app.Content,[6 2]);
+            gl.RowHeight = {32,32,20,'1x',32,140}; gl.ColumnWidth = {220,'1x'};
+            app.W.Lc  = app.txtField(gl,1,'C-weighted level Lceq (dB(C)), blank to compute','99.72');
+            app.W.slc = app.numField(gl,2,'Protector rating SLC80 (dB)',27);
+            app.note(gl,3,'Or octave-band levels "freq, level" per line to get Lceq:');
+            app.W.list = uitextarea(gl,'Value',{'250, 99','500, 95'});
+            app.W.list.Layout.Row = 4; app.W.list.Layout.Column = [1 2];
+            app.goButton(gl,5,@(o,e) app.runProtector());
+            app.W.out = app.resultBox(gl,6);
+        end
+        function runProtector(app)
+            slc = app.W.slc.Value;
+            if ~isempty(strtrim(app.W.Lc.Value))
+                Lceq = app.pnum(app.W.Lc);
+                if isnan(Lceq), app.W.out.Value = {'Lceq must be numeric.'}; return; end
+                R = acoustics.hearingProtector(slc, 'Lceq', Lceq);
+            else
+                M = app.parseRows(app.W.list.Value, 2);
+                if isempty(M), app.W.out.Value = {'Enter Lceq, or "freq, level" band rows.'}; return; end
+                R = acoustics.hearingProtector(slc, 'bands', M);
+                app.W.Lc.Value = sprintf('%.2f', R.Lceq);
+            end
+            app.W.out.Value = [{ sprintf('Protected L_Aeq = %.2f dB(A)  (Lceq %.2f dB(C) - SLC80 %g dB)', ...
+                R.protected, R.Lceq, slc), '', 'WORKING' }, R.steps];
         end
 
         % ================= LOUDNESS =================
