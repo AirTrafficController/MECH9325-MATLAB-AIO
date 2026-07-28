@@ -186,3 +186,25 @@ function testReverbTestRoomSingleBand(t)
     verifyEqual(t, R.LpEmpty(1), 93.7477, 'AbsTol', 0.01);
     verifyEqual(t, R.reduction, 3.4082, 'AbsTol', 0.01);
 end
+
+function testReverbTestRoomFurnitureExample(t)
+    % Web-app worked example: V = 207 m^3, S = 220 m^2, rho c = 415.
+    % Octave bands 250/500/1000 Hz; reference source Lw and empty/furnished T60.
+    f    = [250   500   1000];
+    Lw   = [81.4  82.0  88.2];
+    Te   = [8.2   7.5   6.4];    % empty T60 (s)
+    Tf   = [6.5   5.9   4.8];    % furnished T60 (s)
+    R = acoustics.reverbTestRoom(f, Lw, Te, Tf, 207, 220, 'rhoc', 415);
+    % (a) empty absorption area
+    verifyEqual(t, R.Aempty, [4.064 4.444 5.207], 'AbsTol', 0.01);
+    % (b) furnished absorption area
+    verifyEqual(t, R.Afurn,  [5.127 5.649 6.943], 'AbsTol', 0.01);
+    % (f) empty mean-square pressures (Pa^2)
+    verifyEqual(t, R.p2empty, [0.0553 0.0580 0.2056], 'AbsTol', 0.001);
+    % (g) furnished mean-square pressures (Pa^2)
+    verifyEqual(t, R.p2furn,  [0.0436 0.0454 0.1530], 'AbsTol', 0.001);
+    % (j),(k),(l) overall A-weighted levels and reduction
+    verifyEqual(t, R.dBAempty, 87.8, 'AbsTol', 0.1);
+    verifyEqual(t, R.dBAfurn,  86.5, 'AbsTol', 0.1);
+    verifyEqual(t, R.reduction, 1.3, 'AbsTol', 0.1);
+end

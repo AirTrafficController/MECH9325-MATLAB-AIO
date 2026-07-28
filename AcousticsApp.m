@@ -820,10 +820,9 @@ classdef AcousticsApp < handle
             uilabel(sub,'Text','V (m^3)'); app.W.V=uieditfield(sub,'numeric','Value',207);
             uilabel(sub,'Text','S (m^2)'); app.W.S=uieditfield(sub,'numeric','Value',220);
             uilabel(sub,'Text','rho c (rayls)'); app.W.rc=uieditfield(sub,'numeric','Value',415);
-            f=[250 500 1000]';
             app.W.tbl=uitable(gl,'ColumnName',{'Freq (Hz)','Lw (dB)','T60 empty (s)','T60 furnished (s)'}, ...
                 'ColumnEditable',[false true true true], ...
-                'Data',[num2cell(f), repmat({[]},numel(f),3)]);
+                'Data',{250,81.4,8.2,6.5; 500,82.0,7.5,5.9; 1000,88.2,6.4,4.8});
             app.W.tbl.Layout.Row=2; app.W.tbl.Layout.Column=[1 2];
             app.note(gl,3,'A=0.161V/T60, alpha=A/S, R=A/(1-alpha), W=1e-12*10^(Lw/10), <p^2>=4*rho c*W/R (exact rho c), Lp=10*log10(<p^2>/p_ref^2).');
             b=uibutton(gl,'Text','Compute','ButtonPushedFcn',@(o,e) app.runRevRoom());
