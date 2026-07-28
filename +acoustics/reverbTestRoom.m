@@ -37,7 +37,7 @@ function R = reverbTestRoom(freqs, Lw, T60empty, T60furnished, V, S, opts)
         opts.rhoc (1,1) double {mustBePositive} = 415
         opts.net  (1,1) char {mustBeMember(opts.net,{'A','B','C','Z'})} = 'A'
     end
-    C = constants();
+    C = acoustics.constants();
     B = numel(freqs);
     if ~isequal(numel(Lw), numel(T60empty), numel(T60furnished), B)
         error('acoustics:reverbTestRoom:size', 'All band vectors must match freqs.');
@@ -51,7 +51,7 @@ function R = reverbTestRoom(freqs, Lw, T60empty, T60furnished, V, S, opts)
     R.W = W;
     R.alphaEmpty = R.Aempty / S;
     R.alphaFurn  = R.Afurn  / S;
-    w = arrayfun(@(f) weightingValue(f, opts.net), freqs);
+    w = arrayfun(@(f) acoustics.weightingValue(f, opts.net), freqs);
     R.LpAempty = R.LpEmpty + w;
     R.LpAfurn  = R.LpFurn  + w;
     R.dBAempty = 10*log10(sum(10.^(R.LpAempty/10)));

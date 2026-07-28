@@ -12,7 +12,7 @@ function R = splPressure(opts)
         opts.Lp double = NaN
         opts.p  double {mustBePositiveOrNaN(opts.p)} = NaN
     end
-    C = constants();
+    C = acoustics.constants();
     hasLp = ~isnan(opts.Lp);
     hasP  = ~isnan(opts.p);
     if hasLp == hasP

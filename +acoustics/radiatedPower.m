@@ -24,7 +24,7 @@ function R = radiatedPower(r, opts)
         opts.Q    (1,1) double {mustBePositive} = 1
         opts.rhoc (1,1) double {mustBePositive} = 415
     end
-    C = constants();
+    C = acoustics.constants();
     hasI = ~isnan(opts.I);
     hasP = ~isnan(opts.P);
     if hasI == hasP

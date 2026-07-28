@@ -16,7 +16,7 @@ function R = ductToVoltage(Lw, d_mm, sens_dB, opts)
         opts.c    (1,1) double {mustBePositive} = 343
         opts.fmax (1,1) double = 0
     end
-    C = constants();
+    C = acoustics.constants();
     d = d_mm/1000;
     R.W = C.WREF*10^(Lw/10);
     R.area = pi*d^2/4;

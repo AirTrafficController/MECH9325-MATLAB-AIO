@@ -12,7 +12,7 @@ function R = combineLevels(levels)
     arguments
         levels (1,:) double
     end
-    C = constants();
+    C = acoustics.constants();
     e = 10.^(levels/10);
     s = sum(e);
     R.total = 10*log10(s);

@@ -11,7 +11,7 @@ function R = peakToRms(P, components)
         P (1,1) double {mustBeNonnegative}
         components (1,:) double = []
     end
-    C = constants();
+    C = acoustics.constants();
     R.prms = P/sqrt(2);
     R.splRms = 20*log10(R.prms/C.PREF);
     R.steps = { ...
