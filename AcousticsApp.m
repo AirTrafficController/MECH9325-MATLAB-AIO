@@ -126,6 +126,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Power: Lw from free-field band SPLs','sound power lw free field band spl unweight a-weighted hemisphere sphere drill', @app.buildPowerBands};
 
             c(end+1,:) = {'Duct: sound power -> mic voltage','duct pipe microphone voltage sensitivity plane wave intensity rms cut-on', @app.buildDuct};
+            c(end+1,:) = {'Duct: octave-band Lp -> I, W, totals (pipe)','duct pipe speaker plane wave octave band spl lp rms pressure intensity power radiated cross section area total lw', @app.buildDuctPower};
 
             c(end+1,:) = {'A / B / C Weighting & overall level','weighting a b c dba dbc octave third overall spectrum network', @app.buildWeighting};
             c(end+1,:) = {'Band Workbench (1/3-oct -> octave)','band workbench third octave overall a-weighted spl triplet nine bands', @app.buildBand};
@@ -967,6 +968,38 @@ classdef AcousticsApp < handle
             R = acoustics.ductToVoltage(Lw, d, Sdb, 'rho',rho, 'c',c, 'fmax',fmax);
             app.W.out.Value = [{ sprintf('RMS voltage = %.4g V  (%.4g mV)', R.V, R.V*1000), ...
                 '', 'WORKING' }, R.steps];
+        end
+
+        function buildDuctPower(app)
+            gl = uigridlayout(app.Content,[5 2]);
+            gl.RowHeight = {32,'1x',44,32,150}; gl.ColumnWidth = {200,'1x'};
+            sub = uigridlayout(gl,[1 6]); sub.Layout.Row=1; sub.Layout.Column=[1 2];
+            sub.Padding=[0 0 0 0]; sub.ColumnWidth={130,'1x',50,'1x',50,'1x'};
+            uilabel(sub,'Text','Pipe diameter d (mm)');
+            app.W.d=uieditfield(sub,'numeric','Value',86);
+            uilabel(sub,'Text','rho'); app.W.rho=uieditfield(sub,'numeric','Value',1.21);
+            uilabel(sub,'Text','c');   app.W.c=uieditfield(sub,'numeric','Value',343);
+            app.W.tbl=uitable(gl,'ColumnName',{'Freq (Hz)','Lp (dB)'}, ...
+                'ColumnEditable',[false true], 'Data',{125,106;250,105;500,105;1000,94});
+            app.W.tbl.Layout.Row=2; app.W.tbl.Layout.Column=[1 2];
+            app.note(gl,3,'Long pipe, plane waves (no reflections): A=pi*d^2/4, p_rms=p_ref*10^(Lp/20), I=p_rms^2/(rho c), W=I*A. Total Lp combines the bands; Total Lw=10log10(sum W/1e-12).');
+            b=uibutton(gl,'Text','Compute','ButtonPushedFcn',@(o,e) app.runDuctPower());
+            b.Layout.Row=4; b.Layout.Column=[1 2];
+            app.W.out=uitextarea(gl,'Editable','off','FontName','monospaced');
+            app.W.out.Layout.Row=5; app.W.out.Layout.Column=[1 2];
+        end
+        function runDuctPower(app)
+            d=app.W.d.Value; rho=app.W.rho.Value; c=app.W.c.Value;
+            if ~(d>0&&rho>0&&c>0), app.W.out.Value={'d, rho and c must be > 0.'}; return; end
+            dm=app.W.tbl.Data; f=[]; Lp=[];
+            for i=1:size(dm,1)
+                v=dm{i,2};
+                if ~isempty(v)&&~isnan(v), f(end+1)=dm{i,1}; Lp(end+1)=v; end %#ok<AGROW>
+            end
+            if isempty(f), app.W.out.Value={'Enter at least one band Lp.'}; return; end
+            R=acoustics.ductBandPower(f, Lp, d/1000, 'rho',rho, 'c',c);
+            app.W.out.Value=[{ sprintf('Total Lp = %.2f dB · Total Lw = %.2f dB', ...
+                R.LpTotal, R.LwTotal), '', 'WORKING' }, R.steps];
         end
 
         % ================= WEIGHTING =================

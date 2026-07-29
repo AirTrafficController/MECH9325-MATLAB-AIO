@@ -164,6 +164,17 @@ function testRadiatedPowerFromPressure(t)
     verifyEqual(t, R.W, 37.85, 'AbsTol', 0.02);
 end
 
+function testDuctBandPowerSpeaker(t)
+    % 86 mm pipe, long (plane waves). Octave-band Lp -> prms, I, W, totals.
+    R = acoustics.ductBandPower([125 250 500 1000], [106 105 105 94], 0.086, ...
+        'rho', 1.21, 'c', 343);
+    verifyEqual(t, R.prms, [3.991 3.557 3.557 1.002], 'AbsTol', 0.002);
+    verifyEqual(t, R.I,    [0.03837 0.03048 0.03048 0.002421], 'AbsTol', 0.0002);
+    verifyEqual(t, R.W,    [2.229e-4 1.770e-4 1.770e-4 1.406e-5], 'AbsTol', 2e-7);
+    verifyEqual(t, R.LpTotal, 110.24, 'AbsTol', 0.02);
+    verifyEqual(t, R.LwTotal, 87.72, 'AbsTol', 0.02);
+end
+
 % ---- room calculators: formula-level checks -----------------------------
 % (The exact web-app "plant room" and "reverberation test room" example
 % datasets live in data.js; those regression tests are added once the input
