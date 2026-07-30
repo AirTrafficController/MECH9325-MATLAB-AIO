@@ -104,7 +104,7 @@ answer. Library functions are in `+acoustics/`.
 | **Speech / PSIL** | SIL; required A-weighted voice level VL_A (Unit 5 Eq 5.6); Table 5.2 effort + communication verdict vs 88 dB(A) | `speechInterferenceLevel`, `voiceLevelA` |
 | **Community** | Day–night level Ldn | `dayNightLevel` |
 | **Stats / SEL** | SEL ↔ Leq; sort values into terms | `selFromLeq` |
-| **Insulation (TL)** | Mass-law TL; interface impedance & coefficients; TL from α_t; panel resonance | `massLawTL`, `interfaceImpedance`, `tlFromCoefficient`, `panelResonance` |
+| **Insulation (TL)** | Mass-law TL; interface impedance & coefficients; TL from α_t; panel resonance; resonant single-panel TL (mass+stiffness, fₙ + TL vs f) | `massLawTL`, `interfaceImpedance`, `tlFromCoefficient`, `panelResonance`, `panelTL` |
 | **Mufflers** | Sudden area change; expansion-chamber TL; TL/IL/NR level difference | `mufflerAreaChange`, `expansionChamberTL`, `levelDifference` |
 
 ### Speech / voice-effort reference (Unit 5)

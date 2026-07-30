@@ -152,6 +152,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Insulation: interface impedance & coeffs','interface impedance ratio reflection transmission coefficient alpha tl', @app.buildInterface};
             c(end+1,:) = {'Insulation: TL from coefficient','transmission loss tl coefficient alpha t', @app.buildTLcoef};
             c(end+1,:) = {'Insulation: panel resonance frequency','panel resonance natural frequency stiffness mass', @app.buildPanelRes};
+            c(end+1,:) = {'Insulation: panel TL (resonant, mass+stiffness)','panel transmission loss resonant mass stiffness natural frequency deflection force glass skylight tl damping', @app.buildPanelTL};
 
             c(end+1,:) = {'Muffler: sudden area change','muffler silencer area change transmission loss reactive', @app.buildAreaChange};
             c(end+1,:) = {'Muffler: simple expansion chamber','muffler silencer expansion chamber transmission loss reactive quarter wave', @app.buildExpChamber};
@@ -1419,6 +1420,29 @@ classdef AcousticsApp < handle
             if ~(K>0&&M>0), app.W.out.Value = {'K and M must be > 0.'}; return; end
             R = acoustics.panelResonance(K,M);
             app.W.out.Value = [{ sprintf('fn = %.2f Hz', R.fn), '', 'WORKING' }, R.steps];
+        end
+
+        function buildPanelTL(app)
+            gl = app.form(9);
+            app.W.F   = app.numField(gl,1,'Force F (N)',945);
+            app.W.x   = app.numField(gl,2,'Deflection (mm)',0.8);
+            app.W.L   = app.numField(gl,3,'Panel length (mm)',208);
+            app.W.Wd  = app.numField(gl,4,'Panel width (mm)',95);
+            app.W.th  = app.numField(gl,5,'Thickness (mm)',17);
+            app.W.rho = app.numField(gl,6,'Density (kg/m^3)',2500);
+            app.W.fr  = app.txtField(gl,7,'Frequencies (Hz, comma-sep)','100, 1000');
+            app.goButton(gl,8,@(o,e) app.runPanelTL());
+            app.W.out = app.resultBox(gl,9);
+        end
+        function runPanelTL(app)
+            F=app.W.F.Value; x=app.W.x.Value/1000;
+            L=app.W.L.Value/1000; Wd=app.W.Wd.Value/1000; th=app.W.th.Value/1000;
+            rho=app.W.rho.Value;
+            fr=str2double(regexp(strtrim(app.W.fr.Value),'[,\s]+','split')); fr=fr(~isnan(fr));
+            if isempty(fr), app.W.out.Value={'Enter at least one frequency.'}; return; end
+            if ~(F>0&&x>0&&L>0&&Wd>0&&th>0&&rho>0), app.W.out.Value={'All panel values must be > 0.'}; return; end
+            R=acoustics.panelTL(fr, F, x, L, Wd, th, rho);
+            app.W.out.Value=[{ sprintf('fn = %.1f Hz', R.fn), '', 'WORKING' }, R.steps];
         end
 
         % ================= MUFFLERS =================

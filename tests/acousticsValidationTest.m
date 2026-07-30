@@ -87,6 +87,16 @@ end
 
 % ---- insulation: plywood mass-law TL = 21 dB @ 1 kHz --------------------
 
+function testPanelTLskylight(t)
+    % Resonant single panel (glass skylight). Formula-consistency check
+    % (no official answer key): fn and TL from mass+stiffness model.
+    R = acoustics.panelTL([100 1000], 945, 0.8e-3, 0.208, 0.095, 0.017, 2500);
+    verifyEqual(t, R.fn, 188.76, 'AbsTol', 0.1);
+    verifyEqual(t, R.surfaceMass, 42.5, 'AbsTol', 1e-9);   % rho*thickness
+    verifyEqual(t, R.TL(1), 38.33, 'AbsTol', 0.1);         % 100 Hz (below fn)
+    verifyEqual(t, R.TL(2), 49.84, 'AbsTol', 0.1);         % 1000 Hz (above fn)
+end
+
 function testPlywoodMassLawTLis21(t)
     % Plywood 3 mm at 500 kg/m^3 -> M = 1.5 kg/m^2, TL = 20log10(Mf)-42.4
     R = acoustics.massLawTL(1000, 'density', 500, 'thickness_mm', 3);
