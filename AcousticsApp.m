@@ -153,6 +153,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Insulation: TL from coefficient','transmission loss tl coefficient alpha t', @app.buildTLcoef};
             c(end+1,:) = {'Insulation: panel resonance frequency','panel resonance natural frequency stiffness mass', @app.buildPanelRes};
             c(end+1,:) = {'Insulation: panel TL (resonant, mass+stiffness)','panel transmission loss resonant mass stiffness natural frequency deflection force glass skylight tl damping', @app.buildPanelTL};
+            c(end+1,:) = {'Insulation: barrier added to a spectrum (dB(A) before/after)','barrier disk disc panel mass law spectrum octave band a-weighted before after reduction tunnel foam insertion', @app.buildBarrier};
 
             c(end+1,:) = {'Muffler: sudden area change','muffler silencer area change transmission loss reactive', @app.buildAreaChange};
             c(end+1,:) = {'Muffler: simple expansion chamber','muffler silencer expansion chamber transmission loss reactive quarter wave', @app.buildExpChamber};
@@ -1443,6 +1444,40 @@ classdef AcousticsApp < handle
             if ~(F>0&&x>0&&L>0&&Wd>0&&th>0&&rho>0), app.W.out.Value={'All panel values must be > 0.'}; return; end
             R=acoustics.panelTL(fr, F, x, L, Wd, th, rho);
             app.W.out.Value=[{ sprintf('fn = %.1f Hz', R.fn), '', 'WORKING' }, R.steps];
+        end
+
+        function buildBarrier(app)
+            gl = uigridlayout(app.Content,[5 2]);
+            gl.RowHeight = {32,'1x',44,32,150}; gl.ColumnWidth = {200,'1x'};
+            sub = uigridlayout(gl,[1 6]); sub.Layout.Row=1; sub.Layout.Column=[1 2];
+            sub.Padding=[0 0 0 0]; sub.ColumnWidth={130,'1x',110,'1x',80,'1x'};
+            uilabel(sub,'Text','Barrier density (kg/m^3)');
+            app.W.rho=uieditfield(sub,'numeric','Value',320);
+            uilabel(sub,'Text','Thickness (mm)');
+            app.W.th=uieditfield(sub,'numeric','Value',25);
+            uilabel(sub,'Text','Weighting');
+            app.W.net=uidropdown(sub,'Items',{'A','B','C','Z (none)'});
+            app.W.tbl=uitable(gl,'ColumnName',{'Freq (Hz)','Lp (dB)'}, ...
+                'ColumnEditable',[false true], 'Data',{250,104;500,109;1000,106;2000,110});
+            app.W.tbl.Layout.Row=2; app.W.tbl.Layout.Column=[1 2];
+            app.note(gl,3,'Per band: mass-law TL = 20*log10(m"*f)-42.4 with m" = density*thickness; new Lp = Lp - TL. Overall dB(A) before and after with reduction.');
+            b=uibutton(gl,'Text','Compute','ButtonPushedFcn',@(o,e) app.runBarrier());
+            b.Layout.Row=4; b.Layout.Column=[1 2];
+            app.W.out=uitextarea(gl,'Editable','off','FontName','monospaced');
+            app.W.out.Layout.Row=5; app.W.out.Layout.Column=[1 2];
+        end
+        function runBarrier(app)
+            rho=app.W.rho.Value; th=app.W.th.Value; net=app.W.net.Value(1);
+            if ~(rho>0&&th>0), app.W.out.Value={'Density and thickness must be > 0.'}; return; end
+            d=app.W.tbl.Data; f=[]; Lp=[];
+            for i=1:size(d,1)
+                v=d{i,2};
+                if ~isempty(v)&&~isnan(v), f(end+1)=d{i,1}; Lp(end+1)=v; end %#ok<AGROW>
+            end
+            if isempty(f), app.W.out.Value={'Enter at least one band Lp.'}; return; end
+            R=acoustics.barrierInsertion(f, Lp, 'density',rho, 'thickness_mm',th, 'net',net);
+            app.W.out.Value=[{ sprintf('Before = %.1f dB(A) · After = %.1f dB(A) · Reduction = %.1f dB(A)', ...
+                R.before, R.after, R.reduction), '', 'WORKING' }, R.steps];
         end
 
         % ================= MUFFLERS =================

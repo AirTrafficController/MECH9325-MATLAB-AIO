@@ -87,6 +87,14 @@ end
 
 % ---- insulation: plywood mass-law TL = 21 dB @ 1 kHz --------------------
 
+function testBarrierInsertionTunnel(t)
+    % Tunnel spectrum + 25 mm foam disc (rho 320). Overall dB(A) before/after.
+    R = acoustics.barrierInsertion([250 500 1000 2000], [104 109 106 110], ...
+        'density', 320, 'thickness_mm', 25);
+    verifyEqual(t, R.before, 113.3, 'AbsTol', 0.1);
+    verifyEqual(t, R.after,  78.8, 'AbsTol', 0.1);
+end
+
 function testPanelTLskylight(t)
     % Resonant single panel (glass skylight). Formula-consistency check
     % (no official answer key): fn and TL from mass+stiffness model.
