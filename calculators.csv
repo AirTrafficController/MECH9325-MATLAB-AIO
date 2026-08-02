@@ -1,0 +1,57 @@
+ToolName,Keywords
+SPL <-> pressure,sound pressure level spl pascal pa rms pressure decibel convert reference prms
+Sound power level Lw,sound power watt w lw level reference convert
+Sound intensity level LI,sound intensity level li watt per square metre pressure rhoc convert
+Radiated power (point source),radiated power point source intensity pressure directivity q sphere hemisphere free field lw
+Duct band power (pipe),duct pipe plane wave octave band spl intensity power cross section area total lw speaker reflected
+Peak <-> RMS & combine tones,peak rms amplitude combine tones quadrature pressures total pressure
+PSD -> RMS pressure,power spectral density psd integrate band mean square pressure spectrum
+Combine levels,combine add sound levels total energy sum sources decibel
+N identical sources,identical sources number combine total same
+Increase from more sources,increase added sources level rise more
+Larger signal error,error larger signal ignore smaller only
+Max sources under limit,maximum sources limit number allowed criterion
+Subtract background,subtract background remove one source total measured
+One of N sources,one source of many identical divide each
+Wave relation c=f*lambda,wave speed frequency wavelength period omega wavenumber lambda
+Speed of sound (temperature),speed of sound temperature celsius kelvin gamma gas constant air
+Particle motion,particle velocity displacement intensity pressure amplitude
+Octave band edges,octave third band edges lower upper bandwidth centre frequency
+Pipe modes,pipe natural frequency closed open quarter wave resonance tube
+Distance attenuation,distance attenuation point line source spreading level far near doubling
+Solve distance,distance from two levels near far increment source
+Lw -> Lp at distance,sound power to pressure distance directivity free field ground line q
+Sabine T60,reverberation time sabine volume surface absorption t60 room
+Average absorption,average absorption coefficient area weighted surfaces alpha
+Room constant,room constant absorption surface alpha
+Room equation Lp from Lw,room equation direct reverberant field distance directivity power
+Absorber change,reverberant change add remove panels absorber level office band
+Plant room,plant room machines motors coating ceiling absorption reverberant treatment reduction band
+Reverberation test room,reverberation test room t60 mean square pressure furniture empty furnished absorption disk
+Background K1,background correction k1 source measurement mean spl
+Environmental K2,environmental correction k2 room surface absorption area
+Sound power from surface SPL,sound power from surface spl measurement k1 k2 area lw
+Lw from bands (free field),sound power free field bands surface intensity octave lw
+Duct -> mic voltage,duct microphone voltage sensitivity plane wave rms cut on
+Weighting: overall dB(A),a weighting b c z overall octave band dba spectrum level network total
+Band workbench (1/3 -> octave),third octave combine bands overall weighted spl
+Leq from levels,equivalent continuous level leq duration exposure sel energy time
+Leq from events,leq events pass by number duration period reference
+Percentile level LN,percentile statistical level l10 l90 exceeded time
+Noise dose,noise dose exposure criterion exchange rate maximum time laeq shift
+Max permissible time,maximum exposure time steady level criterion daily
+Phon -> sone,loudness phon sone convert
+Sone -> phon,loudness sone phon convert
+Speech interference level SIL,speech interference level sil octave bands mean
+Voice level VL_A,voice level a weighted communication distance speech effort shouting sil possible
+Day-night level Ldn,day night level community day night penalty ldn
+SEL <-> Leq,sound exposure level sel leq event duration single
+Mass law TL,mass law transmission loss surface mass frequency panel density thickness
+Panel TL (resonant),panel transmission loss resonant mass stiffness natural frequency deflection force glass skylight damping
+Interface impedance,interface impedance transmission reflection coefficient rayls media water air
+TL from coefficient,transmission loss coefficient alpha transmitted
+Panel resonance,panel resonance natural frequency stiffness mass fn
+Barrier added to spectrum,barrier disc panel spectrum before after a weighted reduction tunnel foam mass law
+Muffler area change,muffler area change expansion sudden transmission loss cross section
+Expansion chamber TL,expansion chamber muffler transmission loss length frequency kl
+Level difference TL/IL/NR,transmission loss insertion loss noise reduction difference before after
