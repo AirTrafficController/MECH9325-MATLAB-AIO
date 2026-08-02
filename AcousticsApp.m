@@ -93,6 +93,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Levels: Peak <-> RMS & combine tones','peak rms amplitude p/sqrt2 combine quadrature pressures tones total', @app.buildRMS};
             c(end+1,:) = {'Levels: PSD -> RMS pressure','psd power spectral density pa2/hz integrate band trapezoid mean square spectrum', @app.buildPSD};
             c(end+1,:) = {'Levels: Radiated power (point source)','radiated power intensity pressure w=i*s 4 pi r2 q directivity free field hemisphere point source lw', @app.buildRadiated};
+            c(end+1,:) = {'Levels: Power into a medium (pipe/interface)','power into medium water pipe interface immersed anechoic spl pressure intensity second medium lake impedance rhoc', @app.buildPowerMedium};
 
             c(end+1,:) = {'Combine: add sound levels','combine add sum total incoherent energy decibel sources', @app.buildCombine};
             c(end+1,:) = {'Combine: N identical sources','n identical sources machines 10log10 total combine', @app.buildNIdentical};
@@ -363,6 +364,23 @@ classdef AcousticsApp < handle
             end
             app.W.out.Value = [{ sprintf('I = %.4g W/m^2 · W = %.4g W · Lw = %.2f dB', ...
                 R.I, R.W, R.Lw), '', 'WORKING' }, R.steps];
+        end
+
+        function buildPowerMedium(app)
+            gl = app.form(6);
+            app.W.spl = app.numField(gl,1,'RMS SPL at interface (dB)',153);
+            app.W.d   = app.numField(gl,2,'Pipe internal diameter (mm)',80);
+            app.W.rho = app.numField(gl,3,'Medium density rho (kg/m^3)',1000);
+            app.W.c   = app.numField(gl,4,'Medium sound speed c (m/s)',1480);
+            app.goButton(gl,5,@(o,e) app.runPowerMedium());
+            app.W.out = app.resultBox(gl,6);
+        end
+        function runPowerMedium(app)
+            d=app.W.d.Value; rho=app.W.rho.Value; c=app.W.c.Value;
+            if ~(d>0&&rho>0&&c>0), app.W.out.Value={'Diameter, rho and c must be > 0.'}; return; end
+            R = acoustics.powerIntoMedium(app.W.spl.Value, d/1000, 'rho',rho, 'c',c);
+            app.W.out.Value = [{ sprintf('W = %.4g W  (%.3f mW) · Lw = %.1f dB', ...
+                R.W, R.W*1000, R.Lw), '', 'WORKING' }, R.steps];
         end
 
         % ================= COMBINE =================

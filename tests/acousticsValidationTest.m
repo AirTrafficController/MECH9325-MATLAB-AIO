@@ -182,6 +182,13 @@ function testRadiatedPowerFromPressure(t)
     verifyEqual(t, R.W, 37.85, 'AbsTol', 0.02);
 end
 
+function testPowerIntoMediumLake(t)
+    % 80 mm pipe into a lake, 153 dB at surface, anechoic in water.
+    R = acoustics.powerIntoMedium(153, 0.080, 'rho', 1000, 'c', 1480);
+    verifyEqual(t, R.prms, 893.37, 'AbsTol', 0.5);
+    verifyEqual(t, R.W, 2.711e-3, 'AbsTol', 1e-5);
+end
+
 function testDuctBandPowerSpeaker(t)
     % 86 mm pipe, long (plane waves). Octave-band Lp -> prms, I, W, totals.
     R = acoustics.ductBandPower([125 250 500 1000], [106 105 105 94], 0.086, ...
