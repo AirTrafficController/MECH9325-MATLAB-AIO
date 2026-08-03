@@ -182,6 +182,13 @@ function testRadiatedPowerFromPressure(t)
     verifyEqual(t, R.W, 37.85, 'AbsTol', 0.02);
 end
 
+function testLwFromSurfaces(t)
+    % A-weighted Lw from six 2 m^2 enveloping faces -> 100.8 dB(A).
+    R = acoustics.soundPowerFromSurfaces([89 87 80 95 90 87], 2);
+    verifyEqual(t, R.totalArea, 12, 'AbsTol', 1e-9);
+    verifyEqual(t, R.Lw, 100.83, 'AbsTol', 0.05);
+end
+
 function testHearingProtectorSLC80(t)
     % AS/NZS 1269 SLC80: protected LAeq = LCeq - SLC80.
     R = acoustics.hearingProtector(99.721, 27);

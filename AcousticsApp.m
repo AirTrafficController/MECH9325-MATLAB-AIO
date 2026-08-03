@@ -124,6 +124,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Power: background correction K1','sound power k1 background correction mean spl', @app.buildK1};
             c(end+1,:) = {'Power: environmental correction K2','sound power k2 environmental correction absorption surface', @app.buildK2};
             c(end+1,:) = {'Power: sound power level (measured)','sound power level lw measured k1 k2 surface hemisphere', @app.buildLwMeas};
+            c(end+1,:) = {'Power: Lw from enveloping-surface SPLs','sound power level lw enveloping surface cuboid box partial areas faces machine engine measured spl sum si', @app.buildLwSurfaces};
             c(end+1,:) = {'Power: Lw from free-field band SPLs','sound power lw free field band spl unweight a-weighted hemisphere sphere drill', @app.buildPowerBands};
 
             c(end+1,:) = {'Duct: sound power -> mic voltage','duct pipe microphone voltage sensitivity plane wave intensity rms cut-on', @app.buildDuct};
@@ -919,6 +920,33 @@ classdef AcousticsApp < handle
             R = acoustics.soundPowerMeasured(app.W.lp.Value, S, ...
                 'K1',app.W.k1.Value, 'K2',app.W.k2.Value);
             app.W.out.Value = [{ sprintf('Lw = %.2f dB', R.Lw), '', 'WORKING' }, R.steps];
+        end
+
+        function buildLwSurfaces(app)
+            gl = uigridlayout(app.Content,[4 2]);
+            gl.RowHeight = {20,'1x',32,150}; gl.ColumnWidth = {200,'1x'};
+            uilabel(gl,'Text','One partial surface per row: area (m^2), level (dB). Use A-weighted levels for A-weighted Lw.');
+            app.W.tbl = uitable(gl,'ColumnName',{'Area (m^2)','Level (dB)'}, ...
+                'ColumnEditable',[true true], ...
+                'Data',{2,89; 2,87; 2,80; 2,95; 2,90; 2,87});
+            app.W.tbl.Layout.Row = 2; app.W.tbl.Layout.Column = [1 2];
+            b = uibutton(gl,'Text','Compute Lw','ButtonPushedFcn',@(o,e) app.runLwSurfaces());
+            b.Layout.Row = 3; b.Layout.Column = [1 2];
+            app.W.out = uitextarea(gl,'Editable','off','FontName','monospaced');
+            app.W.out.Layout.Row = 4; app.W.out.Layout.Column = [1 2];
+        end
+        function runLwSurfaces(app)
+            d=app.W.tbl.Data; areas=[]; levels=[];
+            for i=1:size(d,1)
+                a=d{i,1}; L=d{i,2};
+                if isempty(a)||(isnumeric(a)&&isnan(a))||isempty(L)||(isnumeric(L)&&isnan(L)), continue; end
+                areas(end+1)=a; levels(end+1)=L; %#ok<AGROW>
+            end
+            if isempty(areas), app.W.out.Value={'Enter at least one surface (area, level).'}; return; end
+            if any(areas<=0), app.W.out.Value={'Areas must be > 0.'}; return; end
+            R = acoustics.soundPowerFromSurfaces(levels, areas);
+            app.W.out.Value = [{ sprintf('Lw = %.2f dB  (S = %.4g m^2, mean Lp = %.2f dB)', ...
+                R.Lw, R.totalArea, R.meanLp), '', 'WORKING' }, R.steps];
         end
 
         function buildPowerBands(app)
