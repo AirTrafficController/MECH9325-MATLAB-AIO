@@ -48,13 +48,16 @@ function findCalculator(userQuery, context)
 
     % --- match each step ------------------------------------------------
     n = numel(userQuery);
+    ctxTok = tokenize(context);
     best = strings(n,1);
     for s = 1:n
-        step = strtrim(userQuery(s) + " " + context);
+        stepTok = tokenize(userQuery(s));
         if useTFIDF
-            idx = matchTFIDF(step, descs);
+            qtext = strjoin(cellstr(stepTok), ' ');
+            if isempty(stepTok), qtext = strjoin(cellstr(ctxTok), ' '); end
+            idx = matchTFIDF(string(qtext), descs);
         else
-            idx = matchKeywords(tokenize(step), descTokens, idf);
+            idx = matchKeywords(stepTok, ctxTok, descTokens, idf);
         end
         best(s) = tools(idx);
     end
@@ -82,10 +85,27 @@ function idx = matchTFIDF(queryStep, descs)
 end
 
 % ======================================================================
-function idx = matchKeywords(qtok, descTokens, idf)
-    % IDF-weighted shared-word score (base MATLAB, no toolboxes).
+function idx = matchKeywords(stepTok, ctxTok, descTokens, idf)
+    % Step tokens decide; context only breaks ties (base MATLAB, no toolboxes).
+    stepScore = idfScore(stepTok, descTokens, idf);
+    m = max(stepScore);
+    if m == 0                                   % step has no useful words
+        ctxScore = idfScore(ctxTok, descTokens, idf);
+        [~, idx] = max(ctxScore); return;
+    end
+    ties = find(stepScore >= m - 1e-9);
+    if numel(ties) == 1
+        idx = ties(1);
+    else                                        % break ties with the context
+        ctxScore = idfScore(ctxTok, descTokens, idf);
+        [~, j] = max(ctxScore(ties));
+        idx = ties(j);
+    end
+end
+
+function sc = idfScore(qtok, descTokens, idf)
     N = numel(descTokens);
-    scores = zeros(N, 1);
+    sc = zeros(N, 1);
     for i = 1:N
         shared = intersect(qtok, descTokens{i});
         s = 0;
@@ -93,9 +113,8 @@ function idx = matchKeywords(qtok, descTokens, idf)
             key = char(shared(k));
             if isKey(idf, key), s = s + idf(key); end
         end
-        scores(i) = s;
+        sc(i) = s;
     end
-    [~, idx] = max(scores);
 end
 
 % ======================================================================
@@ -129,5 +148,6 @@ function w = stopWords()
          "per","each","initial","final","three","quarters","quarter","one", ...
          "two","eight","period","hour","hours","day","working","phase", ...
          "phases","steady","still","number","rate","we","you","they","there", ...
-         "here","what","when","how","following","follows","given","such","also"];
+         "here","what","when","how","following","follows","given","such", ...
+         "also","ear","operator"];
 end
