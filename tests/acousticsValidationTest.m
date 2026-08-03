@@ -182,6 +182,12 @@ function testRadiatedPowerFromPressure(t)
     verifyEqual(t, R.W, 37.85, 'AbsTol', 0.02);
 end
 
+function testHearingProtectorSLC80(t)
+    % AS/NZS 1269 SLC80: protected LAeq = LCeq - SLC80.
+    R = acoustics.hearingProtector(99.721, 27);
+    verifyEqual(t, R.protectedLAeq, 72.721, 'AbsTol', 0.01);
+end
+
 function testPowerIntoMediumLake(t)
     % 80 mm pipe into a lake, 153 dB at surface, anechoic in water.
     R = acoustics.powerIntoMedium(153, 0.080, 'rho', 1000, 'c', 1480);

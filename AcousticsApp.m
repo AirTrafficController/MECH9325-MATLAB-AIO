@@ -138,6 +138,7 @@ classdef AcousticsApp < handle
 
             c(end+1,:) = {'Noise Dose & max time','noise dose ohs 85 db exchange permissible time worker shift criterion', @app.buildDose};
             c(end+1,:) = {'Max permissible time (steady level)','max permissible time steady level exchange rate criterion ohs', @app.buildMaxTime};
+            c(end+1,:) = {'Hearing protector (SLC80)','hearing protector ear muff plug slc80 protected laeq lceq c-weighted attenuation reduction wear as nzs 1269', @app.buildHearProt};
 
             c(end+1,:) = {'Loudness: phons -> sones','loudness phon sone equal loudness contour convert subjective', @app.buildPh2S};
             c(end+1,:) = {'Loudness: sones -> phons','loudness sone phon convert log2', @app.buildS2Ph};
@@ -1274,6 +1275,20 @@ classdef AcousticsApp < handle
             R = acoustics.maxPermissibleTime(L,'Lc',Lc,'q',q,'Tc',Tc);
             app.W.out.Value = [{ sprintf('T = %.3f h  (%s) - level %s the %g dB(A) criterion.', ...
                 R.T, fmtHM(R.T), ternary(R.exceeds,'exceeds','is within'), Lc), ...
+                '', 'WORKING' }, R.steps];
+        end
+
+        function buildHearProt(app)
+            gl = app.form(5);
+            app.W.LCeq  = app.numField(gl,1,'C-weighted level LCeq (dB(C))',99.72);
+            app.W.SLC80 = app.numField(gl,2,'Protector SLC80 (dB)',27);
+            app.note(gl,3,'AS/NZS 1269: protected LAeq = LCeq - SLC80. LCeq is the C-weighted equivalent level (equals the linear Leq when C-weighting is ~0 in the key bands).');
+            app.goButton(gl,4,@(o,e) app.runHearProt());
+            app.W.out = app.resultBox(gl,5);
+        end
+        function runHearProt(app)
+            R = acoustics.hearingProtector(app.W.LCeq.Value, app.W.SLC80.Value);
+            app.W.out.Value = [{ sprintf('Protected LAeq = %.2f dB(A)', R.protectedLAeq), ...
                 '', 'WORKING' }, R.steps];
         end
 
