@@ -6,7 +6,7 @@ Radiated power (point source),radiated power point source intensity pressure dir
 Duct band power (pipe),duct pipe plane wave octave band spl intensity power cross section area total lw speaker reflected
 Peak <-> RMS & combine tones,peak rms amplitude combine tones quadrature pressures total pressure
 PSD -> RMS pressure,power spectral density psd integrate band mean square pressure spectrum
-Combine levels,combine add sound levels total energy sum sources decibel
+Combine levels,combine add sound levels total energy sum sources decibel lp overall octave band linear unweighted
 N identical sources,identical sources number combine total same
 Increase from more sources,increase added sources level rise more
 Larger signal error,error larger signal ignore smaller only
@@ -33,9 +33,9 @@ Environmental K2,environmental correction k2 room surface absorption area
 Sound power from surface SPL,sound power from surface spl measurement k1 k2 area lw
 Lw from bands (free field),sound power free field bands surface intensity octave lw
 Duct -> mic voltage,duct microphone voltage sensitivity plane wave rms cut on
-Weighting: overall dB(A),a weighting b c z overall octave band dba spectrum level network total
+Weighting: overall dB(A),a weighting b c z overall octave band dba spectrum level network total lp la linear unweighted
 Band workbench (1/3 -> octave),third octave combine bands overall weighted spl
-Leq from levels,equivalent continuous level leq duration exposure sel energy time
+Leq from levels,equivalent continuous level leq laeq duration exposure sel energy time working repeated
 Leq from events,leq events pass by number duration period reference
 Percentile level LN,percentile statistical level l10 l90 exceeded time
 Noise dose,noise dose exposure criterion exchange rate maximum time laeq shift
