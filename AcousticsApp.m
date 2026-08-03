@@ -108,6 +108,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Waves: speed of sound from temperature','speed sound temperature gas constant gamma celsius kelvin', @app.buildSOS};
             c(end+1,:) = {'Waves: particle velocity & displacement','particle velocity displacement xi intensity pressure amplitude rho c', @app.buildParticle};
             c(end+1,:) = {'Waves: octave band edges & pipe modes','octave band edges centre bandwidth percentage pipe natural frequency modes resonance', @app.buildBandEdges};
+            c(end+1,:) = {'Waves: pipe natural frequencies (ends)','pipe natural frequency modes resonance closed open both ends tube omega rad/s pressure node antinode standing wave', @app.buildPipeModes};
 
             c(end+1,:) = {'Distance: attenuation L2 at new distance','distance attenuation spreading point line source 6 3 db doubling traffic', @app.buildDistance};
             c(end+1,:) = {'Distance: solve distance from two levels','distance solve unknown two levels back out near far rifle increment', @app.buildInvDistance};
@@ -582,6 +583,26 @@ classdef AcousticsApp < handle
             if ~(L>0), app.W.out.Value = {'Length must be > 0.'}; return; end
             R = acoustics.pipeModes(L,'c',c,'n',4);
             app.W.out.Value = R.steps;
+        end
+
+        function buildPipeModes(app)
+            gl = app.form(6);
+            app.W.L    = app.numField(gl,1,'Pipe length L (m)',2);
+            app.W.c    = app.numField(gl,2,'Speed c (m/s)',343);
+            app.W.n    = app.numField(gl,3,'Number of modes',3);
+            app.W.ends = app.ddField(gl,4,'End conditions', ...
+                {'closed-closed','open-open','closed-open'});
+            app.goButton(gl,5,@(o,e) app.runPipeModes());
+            app.W.out = app.resultBox(gl,6);
+        end
+        function runPipeModes(app)
+            L=app.W.L.Value; c=app.W.c.Value; n=round(app.W.n.Value);
+            if ~(L>0&&c>0&&n>=1), app.W.out.Value={'L, c and number of modes must be > 0.'}; return; end
+            R = acoustics.pipeModes(L,'c',c,'n',n,'ends',string(app.W.ends.Value));
+            head = sprintf('omega = [%s] rad/s · node(s) at x = %s m', ...
+                strjoin(arrayfun(@(x) sprintf('%.1f',x), R.omega, 'UniformOutput',false), ', '), ...
+                strjoin(arrayfun(@(x) sprintf('%.3g',x), R.nodesFundamental, 'UniformOutput',false), ', '));
+            app.W.out.Value = [{ head, '', 'WORKING' }, R.steps];
         end
 
         % ================= DISTANCE =================

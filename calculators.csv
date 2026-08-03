@@ -17,7 +17,7 @@ Wave relation c=f*lambda,wave speed frequency wavelength period omega wavenumber
 Speed of sound (temperature),speed of sound temperature celsius kelvin gamma gas constant air
 Particle motion,particle velocity displacement intensity pressure amplitude
 Octave band edges,octave third band edges lower upper bandwidth centre frequency
-Pipe modes,pipe natural frequency closed open quarter wave resonance tube
+Pipe modes,pipe natural frequency closed open both ends quarter half wave resonance tube omega rad/s pressure node antinode standing wave
 Distance attenuation,distance attenuation point line source spreading level far near doubling
 Solve distance,distance from two levels near far increment source
 Lw -> Lp at distance,sound power to pressure distance directivity free field ground line q

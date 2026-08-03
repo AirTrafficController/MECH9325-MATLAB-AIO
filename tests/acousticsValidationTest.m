@@ -182,6 +182,13 @@ function testRadiatedPowerFromPressure(t)
     verifyEqual(t, R.W, 37.85, 'AbsTol', 0.02);
 end
 
+function testPipeClosedClosed(t)
+    % 2 m pipe closed at both ends: omega_n = 2 pi n c/(2L); node at centre.
+    R = acoustics.pipeModes(2, 'c', 343, 'n', 3, 'ends', "closed-closed");
+    verifyEqual(t, R.omega, [538.78 1077.57 1616.35], 'AbsTol', 0.1);
+    verifyEqual(t, R.nodesFundamental, 1, 'AbsTol', 1e-9);
+end
+
 function testLwFromSurfaces(t)
     % A-weighted Lw from six 2 m^2 enveloping faces -> 100.8 dB(A).
     R = acoustics.soundPowerFromSurfaces([89 87 80 95 90 87], 2);
