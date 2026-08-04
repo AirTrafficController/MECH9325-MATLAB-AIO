@@ -155,7 +155,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Stats: sort values into terms','statistical sort percentile l1 l99 sel leq ordering max min', @app.buildSort};
 
             c(end+1,:) = {'Insulation: mass law TL','insulation transmission loss tl mass law partition wall surface mass density thickness timber glued laminated layers single leaf', @app.buildMassLaw};
-            c(end+1,:) = {'Insulation: double-panel TL (air gap + blanket)','double panel wall two leaves air gap cavity blanket absorptive standing waves mass air mass resonance f0 fl limiting frequency composite barrier separated apart bies hansen transmission loss', @app.buildDoublePanel};
+            c(end+1,:) = {'Insulation: composite / double-panel TL (TL1+TL2)','double panel wall two leaves panels in series composite barrier transmission coefficient product alpha1 alpha2 tl sum add standing waves blanket separated apart timber sound insulation', @app.buildDoublePanel};
             c(end+1,:) = {'Insulation: interface impedance & coeffs','interface impedance ratio reflection transmission coefficient alpha tl', @app.buildInterface};
             c(end+1,:) = {'Insulation: TL from coefficient','transmission loss tl coefficient alpha t', @app.buildTLcoef};
             c(end+1,:) = {'Insulation: panel resonance frequency','panel resonance natural frequency stiffness mass', @app.buildPanelRes};
@@ -1513,25 +1513,25 @@ classdef AcousticsApp < handle
         end
 
         function buildDoublePanel(app)
-            gl = app.form(8);
-            app.W.m1 = app.numField(gl,1,'Panel 1 surface mass m1 (kg/m^2)',16);
-            app.W.m2 = app.numField(gl,2,'Panel 2 surface mass m2 (kg/m^2)',16);
-            app.W.d  = app.numField(gl,3,'Air gap d (m)',0.1);
-            app.W.f  = app.txtField(gl,4,'Frequencies (Hz, comma-separated)','100, 300, 1000');
-            app.note(gl,5,['ACTUAL double-wall TL curve (Bies & Hansen). NOTE: if the ' ...
-                'question asks for "the mass line", use the Mass law tab with the ' ...
-                'SUMMED mass (e.g. 16,16 -> 32) instead - that is the idealised line. ' ...
-                'f0 = mass-air-mass resonance, fl = 55/d. ' ...
-                'f<f0: 20log((m1+m2)f)-42.4 · f0<f<fl: TL1+TL2+20log(fd)-29 · f>fl: TL1+TL2+6.']);
-            app.goButton(gl,6,@(o,e) app.runDoublePanel());
-            app.W.out = app.resultBox(gl,7);
+            gl = app.form(6);
+            app.W.m = app.txtField(gl,1,'Panel surface masses (kg/m^2, comma-separated)','16, 16');
+            app.W.f = app.txtField(gl,2,'Frequencies (Hz, comma-separated)','100, 300, 1000');
+            app.note(gl,3,['Composite barrier / panels in series: transmission coeffs ' ...
+                'MULTIPLY (alpha_t = alpha_1*alpha_2), so TL = TL1 + TL2 + ... ' ...
+                'Each panel uses the mass law TLi = 20*log10(mi*f) - 42.4.']);
+            app.goButton(gl,4,@(o,e) app.runDoublePanel());
+            app.W.out = app.resultBox(gl,5);
         end
         function runDoublePanel(app)
+            m = str2num(app.W.m.Value); %#ok<ST2NM>
             f = str2num(app.W.f.Value); %#ok<ST2NM>
-            if isempty(f), app.W.out.Value = {'Enter one or more frequencies (Hz).'}; return; end
-            R = acoustics.doublePanelTL(f, 'm1',app.W.m1.Value, 'm2',app.W.m2.Value, 'd',app.W.d.Value);
-            head = sprintf('f0=%.1f Hz · fl=%.1f Hz · TL = [%s] dB', R.f0, R.fl, ...
-                strjoin(arrayfun(@(x) sprintf('%.1f',x), R.TL, 'UniformOutput',false), ', '));
+            if isempty(m) || isempty(f)
+                app.W.out.Value = {'Enter panel masses and frequencies (comma-separated).'}; return;
+            end
+            R = acoustics.doublePanelTL(f, 'masses', m);
+            head = sprintf('TL = [%s] dB   at f = [%s] Hz', ...
+                strjoin(arrayfun(@(x) sprintf('%.1f',x), R.TL, 'UniformOutput',false), ', '), ...
+                strjoin(arrayfun(@(x) sprintf('%g',x), R.f, 'UniformOutput',false), ', '));
             app.W.out.Value = [{ head, '', 'WORKING' }, R.steps];
         end
 

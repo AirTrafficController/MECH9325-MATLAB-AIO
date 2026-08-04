@@ -47,7 +47,7 @@ Voice level VL_A,voice level a weighted communication distance speech effort sho
 Day-night level Ldn,day night level community day night penalty ldn
 SEL <-> Leq,sound exposure level sel leq event duration single
 Mass law TL,mass law transmission loss surface mass frequency panel density thickness normal incidence timber glued laminated layers two identical bonded masses add composite single leaf
-Double-panel TL,double panel two leaves timber panels air gap apart separated cavity blanket absorptive low flow resistivity standing waves mass air mass resonance f0 fl limiting frequency composite barrier bies hansen transmission loss mounted 100 mm
+Double-panel TL,double panel two leaves timber panels in series composite barrier transmission coefficient product alpha1 alpha2 tl1 tl2 sum add apart separated cavity blanket standing waves mass line sound insulation mounted 100 mm
 Panel TL (resonant),panel transmission loss resonant mass stiffness natural frequency deflection force glass skylight damping
 Interface impedance,interface impedance transmission reflection coefficient rayls media water air normally incident normal incidence transmitted pressure amplitude particle velocity in water sound transmission coefficient air-water
 TL from coefficient,transmission loss coefficient alpha transmitted

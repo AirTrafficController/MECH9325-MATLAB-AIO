@@ -22,12 +22,13 @@ function testOnePascalIs94dB(t)
 end
 
 function testDoublePanelTL(t)
-    % Two 16 kg/m^2 panels 100 mm apart with absorptive blanket:
-    % f0~67 Hz, fl=550 Hz; TL = 34.4 / 63.0 / 89.4 dB at 100/300/1000 Hz
-    R = acoustics.doublePanelTL([100 300 1000], 'm1',16, 'm2',16, 'd',0.1);
-    verifyEqual(t, R.f0, 67.14, 'AbsTol', 0.1);
-    verifyEqual(t, R.fl, 550,   'AbsTol', 1e-9);
-    verifyEqual(t, R.TL, [34.36 62.99 89.36], 'AbsTol', 0.02);
+    % Two 16 kg/m^2 panels in series (composite barrier): TL = TL1 + TL2
+    % TL = 43.4 / 62.4 / 83.4 dB at 100/300/1000 Hz
+    R = acoustics.doublePanelTL([100 300 1000], 'masses', [16 16]);
+    verifyEqual(t, R.TL, [43.36 62.45 83.36], 'AbsTol', 0.02);
+    % TL supplied directly should just add
+    R2 = acoustics.doublePanelTL('TL', [21.68 21.68]);
+    verifyEqual(t, R2.TL, 43.36, 'AbsTol', 0.01);
 end
 
 function testMassLawGluedLayers(t)

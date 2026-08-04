@@ -1,72 +1,65 @@
 function R = doublePanelTL(f, opts)
-%DOUBLEPANELTL  Transmission loss of a double-leaf partition (Bies & Hansen).
-%   R = ACOUSTICS.DOUBLEPANELTL(f, 'm1',m1, 'm2',m2, 'd',d) gives the normal-
-%   incidence TL (dB) of TWO panels of surface mass m1, m2 (kg/m^2) separated
-%   by an air gap d (m), with a sound-absorptive blanket in the cavity
-%   (which suppresses cavity standing waves). f may be a vector (Hz).
+%DOUBLEPANELTL  TL of panels in series (composite barrier): TL = sum of TLi.
+%   Two (or more) panels in series pass a fraction alpha_i of the incident
+%   intensity each, so the overall transmission coefficient is the PRODUCT
+%       alpha_t = alpha_1 * alpha_2 * ...
+%   and the transmission loss is the SUM of the individual panel TLs
+%       TL = -10 log10(alpha_t) = TL_1 + TL_2 + ...
+%   (This is the workshop/lecture model for a composite double panel.)
 %
-%   The response has three regions set by two characteristic frequencies:
-%       f0 = (1/2pi) sqrt[ (rho c^2 / d)(1/m1 + 1/m2) ]   mass-air-mass resonance
-%       fl = 55/d   (~ c/(2 pi d))                         lower limiting freq
+%   R = ACOUSTICS.DOUBLEPANELTL(f, 'masses', [m1 m2 ...]) gives each panel's
+%   normal-incidence mass-law TL, TLi = 20*log10(mi*f) - 42.4, then sums them.
+%   f may be a vector (Hz). Alternatively give 'TL', [TL1 TL2 ...] to sum
+%   TLs you already have (f is then ignored for the panel TLs).
 %
-%       f < f0 :  the two leaves move together
-%                 TL = 20*log10((m1+m2) f) - 42.4
-%       f0 <= f < fl :
-%                 TL = TL1 + TL2 + 20*log10(f d) - 29
-%       f >= fl :
-%                 TL = TL1 + TL2 + 6
-%   where TLi = 20*log10(mi f) - 42.4 is each leaf's mass law.
+%   Options: 'constant' (42.4 dB mass-law term). R has fields .f, .TL (dB,
+%   per frequency), .TLpanels (per-panel TL at each f), .alphaT and .steps.
 %
-%   Options: 'rho' (1.21), 'c' (343), 'constant' (42.4 dB mass-law term).
-%   R has fields .f, .TL (dB, same size as f), .f0, .fl, .region (string per f)
-%   and .steps.
-%
-%   Example (two 16 kg/m^2 panels 100 mm apart, blanket in cavity):
-%       R = acoustics.doublePanelTL([100 300 1000], 'm1',16,'m2',16,'d',0.1);
-%       R.TL      % [34.4  63.0  89.4] dB
+%   Example (two 16 kg/m^2 timber panels, composite barrier):
+%       R = acoustics.doublePanelTL([100 300 1000], 'masses', [16 16]);
+%       R.TL      % [43.4  62.4  83.4] dB
     arguments
-        f double {mustBePositive}
-        opts.m1 (1,1) double {mustBePositive}
-        opts.m2 (1,1) double {mustBePositive}
-        opts.d  (1,1) double {mustBePositive}
-        opts.rho (1,1) double {mustBePositive} = 1.21
-        opts.c   (1,1) double {mustBePositive} = 343
+        f double = NaN
+        opts.masses double = []
+        opts.TL     double = []
         opts.constant (1,1) double = 42.4
     end
-    m1 = opts.m1; m2 = opts.m2; d = opts.d; K = opts.constant;
-    rhoc2 = opts.rho*opts.c^2;
+    K = opts.constant;
 
-    R.f0 = (1/(2*pi))*sqrt((rhoc2/d)*(1/m1 + 1/m2));
-    R.fl = 55/d;
-
-    f = f(:).';
-    R.f = f;
-    TL1 = 20*log10(m1*f) - K;
-    TL2 = 20*log10(m2*f) - K;
-    R.TL = zeros(size(f));
-    R.region = strings(size(f));
-    for i = 1:numel(f)
-        if f(i) < R.f0
-            R.TL(i) = 20*log10((m1+m2)*f(i)) - K;
-            R.region(i) = "f<f0 (masses move together)";
-        elseif f(i) < R.fl
-            R.TL(i) = TL1(i) + TL2(i) + 20*log10(f(i)*d) - 29;
-            R.region(i) = "f0<f<fl (mid: +20log(fd)-29)";
-        else
-            R.TL(i) = TL1(i) + TL2(i) + 6;
-            R.region(i) = "f>fl (high: TL1+TL2+6)";
-        end
+    if ~isempty(opts.TL)                     % TLs supplied directly
+        tl = opts.TL(:).';
+        R.f = NaN;
+        R.TLpanels = tl;
+        R.TL = sum(tl);
+        R.alphaT = prod(10.^(-tl/10));
+        R.steps = { ...
+            sprintf('Panels in series: alpha_t = prod(alpha_i), TL = sum(TL_i)'), ...
+            sprintf('TL = %s = %.1f dB', ...
+                strjoin(arrayfun(@(x) sprintf('%.2f',x), tl, 'UniformOutput',false),' + '), R.TL), ...
+            sprintf('alpha_t = %.4g', R.alphaT)};
+        return;
     end
 
-    lines = { ...
-        sprintf('rho c^2 = %.6g Pa', rhoc2), ...
-        sprintf('f0 = (1/2pi) sqrt[(rho c^2/d)(1/m1+1/m2)] = %.1f Hz', R.f0), ...
-        sprintf('fl = 55/d = %.1f Hz', R.fl), ...
-        'Leaf mass law: TLi = 20*log10(mi f) - 42.4', ''};
+    if isempty(opts.masses) || any(isnan(f))
+        error('acoustics:doublePanelTL:input', ...
+            'Provide masses (and frequency f), or TL values directly.');
+    end
+    m = opts.masses(:).';
+    f = f(:).';
+    R.f = f;
+    R.TLpanels = zeros(numel(f), numel(m));
+    R.TL = zeros(size(f));
+    R.alphaT = zeros(size(f));
+    lines = {'Panels in series: alpha_t = prod(alpha_i)  ->  TL = sum(TL_i)', ...
+             'Each panel (mass law): TLi = 20*log10(mi*f) - 42.4', ''};
     for i = 1:numel(f)
-        lines{end+1} = sprintf('f = %g Hz  [%s]', f(i), R.region(i)); %#ok<AGROW>
-        lines{end+1} = sprintf('   TL1 = %.2f, TL2 = %.2f  ->  TL = %.1f dB', ...
-            TL1(i), TL2(i), R.TL(i)); %#ok<AGROW>
+        tli = 20*log10(m*f(i)) - K;
+        R.TLpanels(i,:) = tli;
+        R.TL(i) = sum(tli);
+        R.alphaT(i) = prod(10.^(-tli/10));
+        lines{end+1} = sprintf('f = %g Hz:  TL = %s = %.1f dB', f(i), ...
+            strjoin(arrayfun(@(x) sprintf('%.2f',x), tli, 'UniformOutput',false),' + '), ...
+            R.TL(i)); %#ok<AGROW>
     end
     R.steps = lines;
 end
