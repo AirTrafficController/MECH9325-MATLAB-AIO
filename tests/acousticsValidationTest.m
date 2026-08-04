@@ -21,6 +21,15 @@ function testOnePascalIs94dB(t)
     verifyEqual(t, round(R.Lp), 94);
 end
 
+function testPlaneWaveAirWater(t)
+    % u = 0.11 m/s plane wave: SPL in air (127.17 dB) and water (224.35 dB)
+    Ra = acoustics.planeWaveLevel(0.11);                                  % air defaults
+    verifyEqual(t, Ra.Lp, 127.17, 'AbsTol', 0.01);
+    Rw = acoustics.planeWaveLevel(0.11, 'rho',1000, 'c',1500, 'pref',1e-6);
+    verifyEqual(t, Rw.p, 165000, 'AbsTol', 1e-6);
+    verifyEqual(t, Rw.Lp, 224.35, 'AbsTol', 0.01);
+end
+
 function testHalfWattIs117dB(t)
     % 0.5 W -> 117 dB Lw (re 1e-12 W)
     R = acoustics.powerLevel('W', 0.5);

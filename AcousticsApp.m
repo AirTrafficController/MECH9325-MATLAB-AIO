@@ -108,6 +108,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Waves: c = f x lambda','wave wavelength lambda frequency speed sound c=fl period omega wavenumber k', @app.buildWave};
             c(end+1,:) = {'Waves: speed of sound from temperature','speed sound temperature gas constant gamma celsius kelvin', @app.buildSOS};
             c(end+1,:) = {'Waves: particle velocity & displacement','particle velocity displacement xi intensity pressure amplitude rho c', @app.buildParticle};
+            c(end+1,:) = {'Waves: plane wave u -> pressure -> SPL (air/water)','plane wave rms particle velocity fluctuation pressure p=rhocu sound pressure level spl air water medium density speed reference 20 micropascal 1 micropascal underwater impedance rhoc', @app.buildPlaneWave};
             c(end+1,:) = {'Waves: octave band edges & pipe modes','octave band edges centre bandwidth percentage pipe natural frequency modes resonance', @app.buildBandEdges};
             c(end+1,:) = {'Waves: pipe natural frequencies (ends)','pipe natural frequency modes resonance closed open both ends tube omega rad/s pressure node antinode standing wave', @app.buildPipeModes};
 
@@ -257,6 +258,27 @@ classdef AcousticsApp < handle
             end
             app.W.out.Value = [{ sprintf('%g %s = %.6g %s', app.W.val.Value, ...
                 app.W.from.Value, R.value, app.W.to.Value), '', 'WORKING' }, R.steps];
+        end
+
+        function buildPlaneWave(app)
+            gl = app.form(7);
+            app.W.u    = app.txtField(gl,1,'RMS particle velocity u (m/s)','0.11');
+            app.W.rho  = app.txtField(gl,2,'Medium density rho (kg/m^3)','1.21');
+            app.W.c    = app.txtField(gl,3,'Speed of sound c (m/s)','343');
+            app.W.pref = app.txtField(gl,4,'Reference pressure p_ref (Pa)','2e-5');
+            app.note(gl,5,['Plane wave: p = rho*c*u,  Lp = 20*log10(p/p_ref). ' ...
+                'AIR: rho=1.21, c=343, p_ref=2e-5 (20 uPa). ' ...
+                'WATER: rho=1000, c=1500, p_ref=1e-6 (1 uPa).']);
+            app.goButton(gl,6,@(o,e) app.runPlaneWave());
+            app.W.out = app.resultBox(gl,7);
+        end
+        function runPlaneWave(app)
+            u = app.pnum(app.W.u);
+            if u < 0, app.W.out.Value = {'u must be >= 0.'}; return; end
+            R = acoustics.planeWaveLevel(u, 'rho',app.pnum(app.W.rho), ...
+                'c',app.pnum(app.W.c), 'pref',app.pnum(app.W.pref));
+            app.W.out.Value = [{ sprintf('Lp = %.2f dB · p_rms = %.5g Pa · rho c = %.5g rayls', ...
+                R.Lp, R.p, R.rhoc), '', 'WORKING' }, R.steps];
         end
 
         % ================= LEVELS =================
