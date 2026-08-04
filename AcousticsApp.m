@@ -589,7 +589,7 @@ classdef AcousticsApp < handle
 
         function buildParticle(app)
             gl = app.form(5);
-            app.W.P  = app.numField(gl,1,'Pressure amplitude P (Pa)',2);
+            app.W.P  = app.numField(gl,1,'PEAK pressure amplitude P (Pa)',2);
             app.W.f  = app.numField(gl,2,'Frequency f (Hz)',1000);
             app.W.rc = app.numField(gl,3,'rho c (rayls)',415);
             app.goButton(gl,4,@(o,e) app.runParticle());
@@ -597,8 +597,8 @@ classdef AcousticsApp < handle
         end
         function runParticle(app)
             R = acoustics.particleMotion(app.W.P.Value, app.W.f.Value, 'rhoc',app.W.rc.Value);
-            app.W.out.Value = [{ sprintf('u = %.4g m/s · xi = %.4g m · I = %.4g W/m^2', ...
-                R.u, R.xi, R.I), '', 'WORKING' }, R.steps];
+            app.W.out.Value = [{ sprintf('I = %.4g W/m^2 · u = %.4g m/s · xi = %.4g m · p_rms = %.4g Pa · Lp = %.2f dB', ...
+                R.I, R.u, R.xi, R.prms, R.Lp), '', 'WORKING' }, R.steps];
         end
 
         function buildBandEdges(app)

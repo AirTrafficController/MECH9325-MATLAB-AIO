@@ -21,6 +21,17 @@ function testOnePascalIs94dB(t)
     verifyEqual(t, round(R.Lp), 94);
 end
 
+function testParticleMotionFullChain(t)
+    % Plane wave, P_peak = 1.5 Pa, f = 120 Hz, rho c = 415:
+    % I=0.002711, u=0.003614, xi=4.793e-6, p_rms=1.061, Lp=94.49
+    R = acoustics.particleMotion(1.5, 120, 'rhoc', 415);
+    verifyEqual(t, R.I,    0.002711, 'AbsTol', 1e-6);
+    verifyEqual(t, R.u,    0.003614, 'AbsTol', 1e-6);
+    verifyEqual(t, R.xi,   4.793e-6, 'AbsTol', 1e-9);
+    verifyEqual(t, R.prms, 1.0607,   'AbsTol', 1e-3);
+    verifyEqual(t, R.Lp,   94.49,    'AbsTol', 0.01);
+end
+
 function testPlaneWaveAirWater(t)
     % u = 0.11 m/s plane wave: SPL in air (127.17 dB) and water (224.35 dB)
     Ra = acoustics.planeWaveLevel(0.11);                                  % air defaults

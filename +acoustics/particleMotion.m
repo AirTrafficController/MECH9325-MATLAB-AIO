@@ -1,23 +1,30 @@
 function R = particleMotion(P, f, opts)
 %PARTICLEMOTION  Particle velocity, displacement and intensity of a wave.
-%   R = ACOUSTICS.PARTICLEMOTION(P, f) for a plane wave of pressure
+%   R = ACOUSTICS.PARTICLEMOTION(P, f) for a plane wave of PEAK pressure
 %   amplitude P (Pa) at frequency f (Hz), with rho c = 415 rayls by default:
-%       u  = P / (rho c)                 particle velocity amplitude
-%       xi = u / omega,  omega = 2*pi*f  displacement amplitude
-%       I  = P^2 / (2 rho c)             intensity
+%       u    = P / (rho c)                 particle velocity amplitude
+%       xi   = u / omega,  omega = 2*pi*f  displacement amplitude
+%       I    = P^2 / (2 rho c)             intensity
+%       prms = P / sqrt(2)                 RMS pressure
+%       Lp   = 20*log10(prms / p_ref)      sound pressure level (p_ref = 2e-5)
 %   Optional 'rhoc' overrides the impedance. R has fields .u, .xi, .I,
-%   .omega and .steps.
+%   .prms, .Lp, .omega and .steps.
     arguments
         P (1,1) double {mustBeNonnegative}
         f (1,1) double {mustBePositive}
         opts.rhoc (1,1) double {mustBePositive} = 415
     end
+    C = acoustics.constants();
     R.omega = 2*pi*f;
     R.u = P/opts.rhoc;
     R.xi = R.u/R.omega;
     R.I = P^2/(2*opts.rhoc);
+    R.prms = P/sqrt(2);
+    R.Lp = 20*log10(R.prms/C.PREF);
     R.steps = { ...
-        sprintf('u = P/(rho c) = %g/%g = %.4g m/s', P, opts.rhoc, R.u), ...
-        sprintf('xi = u/omega = u/(2*pi*f) = %.4g m', R.xi), ...
-        sprintf('I = P^2/(2 rho c) = %.4g W/m^2', R.I)};
+        sprintf('(velocity) u = P/(rho c) = %g/%g = %.4g m/s', P, opts.rhoc, R.u), ...
+        sprintf('(displacement) xi = u/omega = u/(2*pi*f) = %.4g m', R.xi), ...
+        sprintf('(intensity) I = P^2/(2 rho c) = %.4g W/m^2', R.I), ...
+        sprintf('(RMS pressure) p_rms = P/sqrt(2) = %.4g Pa', R.prms), ...
+        sprintf('(SPL) Lp = 20*log10(p_rms/2e-5) = %.2f dB', R.Lp)};
 end
