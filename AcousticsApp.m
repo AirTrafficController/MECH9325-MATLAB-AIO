@@ -1484,27 +1484,30 @@ classdef AcousticsApp < handle
 
         % ================= INSULATION / TL =================
         function buildMassLaw(app)
-            gl = app.form(6);
-            app.W.M   = app.txtField(gl,1,'Surface mass M (kg/m^2)','');
+            gl = app.form(7);
+            app.W.M   = app.txtField(gl,1,'Surface mass M (kg/m^2)  [glued layers: 10,10]','');
             app.W.rho = app.txtField(gl,2,'or density (kg/m^3)','2500');
             app.W.t   = app.txtField(gl,3,'x thickness t (mm)','3');
             app.W.f   = app.numField(gl,4,'Frequency f (Hz)',1000);
-            app.goButton(gl,5,@(o,e) app.runMassLaw());
-            app.W.out = app.resultBox(gl,6);
+            app.note(gl,5,['Normal incidence: TL = 20*log10(M*f) - 42.4. ' ...
+                'Panels GLUED/laminated (no air gap) act as one leaf - masses add: ' ...
+                'enter e.g. 10,10 for two bonded 10 kg/m^2 panels (M=20).']);
+            app.goButton(gl,6,@(o,e) app.runMassLaw());
+            app.W.out = app.resultBox(gl,7);
         end
         function runMassLaw(app)
-            f=app.W.f.Value; M=app.pnum(app.W.M);
+            f=app.W.f.Value; M=str2num(app.W.M.Value); %#ok<ST2NM>
             try
-                if ~isnan(M)
+                if ~isempty(M)
                     R = acoustics.massLawTL(f,'M',M);
                 else
                     R = acoustics.massLawTL(f,'density',app.pnum(app.W.rho), ...
                         'thickness_mm',app.pnum(app.W.t));
                 end
             catch
-                app.W.out.Value = {'Enter surface mass, or density and thickness.'}; return;
+                app.W.out.Value = {'Enter surface mass (one value or comma-separated layers), or density and thickness.'}; return;
             end
-            app.W.out.Value = [{ sprintf('Surface mass M = %.3f kg/m^2 · TL = %.1f dB at %g Hz', ...
+            app.W.out.Value = [{ sprintf('Total surface mass M = %.3f kg/m^2 · TL = %.1f dB at %g Hz', ...
                 R.M, R.TL, f), '', 'WORKING' }, R.steps];
         end
 

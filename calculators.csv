@@ -46,7 +46,7 @@ Speech interference level SIL,speech interference level sil octave bands mean
 Voice level VL_A,voice level a weighted communication distance speech effort shouting sil possible
 Day-night level Ldn,day night level community day night penalty ldn
 SEL <-> Leq,sound exposure level sel leq event duration single
-Mass law TL,mass law transmission loss surface mass frequency panel density thickness
+Mass law TL,mass law transmission loss surface mass frequency panel density thickness normal incidence timber double panel glued laminated layers two identical bonded masses add composite leaf
 Panel TL (resonant),panel transmission loss resonant mass stiffness natural frequency deflection force glass skylight damping
 Interface impedance,interface impedance transmission reflection coefficient rayls media water air normally incident normal incidence transmitted pressure amplitude particle velocity in water sound transmission coefficient air-water
 TL from coefficient,transmission loss coefficient alpha transmitted

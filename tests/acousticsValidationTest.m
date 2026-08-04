@@ -21,6 +21,17 @@ function testOnePascalIs94dB(t)
     verifyEqual(t, round(R.Lp), 94);
 end
 
+function testMassLawGluedLayers(t)
+    % Two glued 10 kg/m^2 timber panels -> M=20; TL at 100/300/1000 Hz
+    R100 = acoustics.massLawTL(100, 'M', [10 10]);
+    verifyEqual(t, R100.M, 20, 'AbsTol', 1e-9);
+    verifyEqual(t, R100.TL, 23.62, 'AbsTol', 0.01);
+    verifyEqual(t, acoustics.massLawTL(300,  'M', [10 10]).TL, 33.16, 'AbsTol', 0.01);
+    verifyEqual(t, acoustics.massLawTL(1000, 'M', [10 10]).TL, 43.62, 'AbsTol', 0.01);
+    % glued layers equal a single leaf of the summed mass
+    verifyEqual(t, R100.TL, acoustics.massLawTL(100, 'M', 20).TL, 'AbsTol', 1e-9);
+end
+
 function testAirWaterInterface(t)
     % 17 Pa in air onto water: pTrans=33.99 Pa, uTrans=2.297e-5 m/s, alpha=0.00112
     R = acoustics.interfaceImpedance(1.21*343, 1000*1480, 'p0', 17);
