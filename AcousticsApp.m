@@ -87,6 +87,7 @@ classdef AcousticsApp < handle
         function defineCalcs(app)
             c = {};
             % name, tags, fn
+            c(end+1,:) = {'Unit converter (prefixes & acoustic units)','unit convert conversion prefix nano pico femto micro milli kilo mega giga scale pascal pa upa kpa mpa bar atm psi mmhg watt mw uw pw fw hz khz rad/s metre mm cm um nm celsius kelvin fahrenheit density speed', @app.buildConvert};
             c(end+1,:) = {'Levels: SPL <-> pressure','spl lp sound pressure level pascal pa rms reference 20 micropascal decibel convert', @app.buildSPL};
             c(end+1,:) = {'Levels: Sound power level Lw','lw sound power watt level reference convert', @app.buildLwConv};
             c(end+1,:) = {'Levels: Sound intensity level LI','li intensity i=p2/rhoc pressure level reference convert', @app.buildLI};
@@ -235,6 +236,27 @@ classdef AcousticsApp < handle
         function note(~, gl, row, txt)
             l = uilabel(gl,'Text',txt,'FontColor',[.5 .5 .5],'WordWrap','on');
             l.Layout.Row = row; l.Layout.Column = [1 2];
+        end
+
+        % ================= UNIT CONVERTER =================
+        function buildConvert(app)
+            gl = app.form(6);
+            app.W.val  = app.numField(gl,1,'Value',2e-5);
+            app.W.from = app.txtField(gl,2,'From unit','Pa');
+            app.W.to   = app.txtField(gl,3,'To unit','uPa');
+            app.note(gl,4,['Prefixes f p n u m c k M G T on Pa W Hz s m g V rayl (e.g. uPa, kPa, nm, mW, pW, kHz, ms). ' ...
+                'Also: bar atm psi mmHg; in ft; min h; rad/s rpm; m2 cm2 mm2; L mL; m/s km/h; kg g; kg/m3 g/cm3; C K F.']);
+            app.goButton(gl,5,@(o,e) app.runConvert());
+            app.W.out = app.resultBox(gl,6);
+        end
+        function runConvert(app)
+            try
+                R = acoustics.convertUnit(app.W.val.Value, app.W.from.Value, app.W.to.Value);
+            catch me
+                app.W.out.Value = {me.message}; return;
+            end
+            app.W.out.Value = [{ sprintf('%g %s = %.6g %s', app.W.val.Value, ...
+                app.W.from.Value, R.value, app.W.to.Value), '', 'WORKING' }, R.steps];
         end
 
         % ================= LEVELS =================

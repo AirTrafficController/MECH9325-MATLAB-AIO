@@ -182,6 +182,15 @@ function testRadiatedPowerFromPressure(t)
     verifyEqual(t, R.W, 37.85, 'AbsTol', 0.02);
 end
 
+function testUnitConvert(t)
+    verifyEqual(t, acoustics.convertUnit(2e-5,'Pa','uPa').value, 20, 'AbsTol', 1e-9);
+    verifyEqual(t, acoustics.convertUnit(1e-12,'W','pW').value, 1, 'AbsTol', 1e-12);
+    verifyEqual(t, acoustics.convertUnit(1,'atm','kPa').value, 101.325, 'AbsTol', 1e-6);
+    verifyEqual(t, acoustics.convertUnit(20,'C','K').value, 293.15, 'AbsTol', 1e-9);
+    verifyEqual(t, acoustics.convertUnit(257.25,'Hz','rad/s').value, 2*pi*257.25, 'AbsTol', 1e-6);
+    verifyEqual(t, acoustics.convertUnit(14,'mm','m').value, 0.014, 'AbsTol', 1e-12);
+end
+
 function testPipeClosedClosed(t)
     % 2 m pipe closed at both ends: omega_n = 2 pi n c/(2L); node at centre.
     R = acoustics.pipeModes(2, 'c', 343, 'n', 3, 'ends', "closed-closed");
