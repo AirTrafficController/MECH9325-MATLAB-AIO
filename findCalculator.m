@@ -16,9 +16,9 @@ function findCalculator(userQuery, context)
 %   SIL, ...) and scores shared words by inverse document frequency (IDF) so
 %   generic words ("plane", "air", "sound") don't dominate a rare, decisive
 %   word ("intensity", "reverberation"). The part's own words decide; the
-%   context only breaks near-ties. TF-IDF + cosine similarity is used when the
-%   Text Analytics + Statistics toolboxes are present, and the IDF score
-%   otherwise - so it runs on any MATLAB, including exam lab machines.
+%   context only breaks near-ties. It uses one scoring method everywhere -
+%   IDF keyword overlap in base MATLAB, with no toolbox dependence - so the
+%   ranking is identical on exam lab machines and on a full install.
 %
 %   Examples:
 %       findCalculator("A plane wave ... Determine (i) Intensity (ii) particle velocity (iii) SPL")
@@ -51,8 +51,6 @@ function findCalculator(userQuery, context)
 
     descTokens = arrayfun(@(s) tokenize(s), descs, 'UniformOutput', false);
     idf = computeIDF(descTokens);
-    useTFIDF = exist('tokenizedDocument','file') && exist('tfidf','file') && ...
-               exist('bagOfWords','file') && exist('pdist2','file');
     ctxTok = tokenize(context);
 
     % --- rank tools for each part ---------------------------------------
@@ -62,7 +60,7 @@ function findCalculator(userQuery, context)
     end
     K = 3;                                        % show top-K candidates
     for s = 1:numel(parts)
-        sc = scoreVector(parts(s), ctxTok, descTokens, descs, idf, useTFIDF);
+        sc = scoreVector(parts(s), ctxTok, descTokens, idf);
         [sv, order] = sort(sc, 'descend');
         fprintf('Part %d  "%s"\n', s, truncate(parts(s), 70));
         if sv(1) <= 0
@@ -84,42 +82,20 @@ function findCalculator(userQuery, context)
 end
 
 % ======================================================================
-function sc = scoreVector(part, ctxTok, descTokens, descs, idf, useTFIDF)
-%SCOREVECTOR  Full similarity vector over all tools for one part.
-%   The part's own words decide; the context adds only a small tie-breaking
+function sc = scoreVector(part, ctxTok, descTokens, idf)
+%SCOREVECTOR  IDF-weighted keyword-overlap score over all tools for one part.
+%   The part's own words decide; the context adds only a faint tie-breaking
 %   nudge, so a decisive word in the part cannot be swamped by the preamble.
+%   One method is used everywhere (no toolbox dependence) so the ranking is
+%   identical on exam lab machines and here - unlike length-normalised cosine,
+%   IDF overlap does not penalise a tool for having a longer keyword list.
     stepTok = tokenize(part);
-    if useTFIDF
-        q = stepTok;
-        if isempty(q), q = ctxTok; end
-        sc = tfidfSim(strjoin(cellstr(q), ' '), descs);
-        % blend a faint context signal only to separate near-ties
-        if ~isempty(ctxTok)
-            sc = sc + 1e-3 * tfidfSim(strjoin(cellstr(ctxTok), ' '), descs);
-        end
-        return;
-    end
     stepScore = idfScore(stepTok, descTokens, idf);
     if max(stepScore) == 0
         sc = idfScore(ctxTok, descTokens, idf);   % nothing in the part itself
     else
         sc = stepScore + 1e-3 * idfScore(ctxTok, descTokens, idf);
     end
-end
-
-% ======================================================================
-function sim = tfidfSim(queryText, descs)
-    docs = [descs; string(queryText)];
-    bag  = removeWords(bagOfWords(tokenizedDocument(lower(docs))), stopWords());
-    M    = tfidf(bag);
-    qv   = full(M(end, :));
-    dv   = full(M(1:end-1, :));
-    if ~any(qv)
-        sim = zeros(numel(descs), 1); return;
-    end
-    d = pdist2(qv, dv, 'cosine');
-    d(isnan(d)) = 1;
-    sim = 1 - d(:);
 end
 
 % ======================================================================
