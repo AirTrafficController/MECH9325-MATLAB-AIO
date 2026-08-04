@@ -21,6 +21,14 @@ function testOnePascalIs94dB(t)
     verifyEqual(t, round(R.Lp), 94);
 end
 
+function testAirWaterInterface(t)
+    % 17 Pa in air onto water: pTrans=33.99 Pa, uTrans=2.297e-5 m/s, alpha=0.00112
+    R = acoustics.interfaceImpedance(1.21*343, 1000*1480, 'p0', 17);
+    verifyEqual(t, R.pTrans, 33.9905, 'AbsTol', 0.01);
+    verifyEqual(t, R.uTrans, 2.29665e-5, 'AbsTol', 1e-8);
+    verifyEqual(t, R.alphaT, 0.00112107, 'AbsTol', 1e-7);
+end
+
 function testParticleMotionFullChain(t)
     % Plane wave, P_peak = 1.5 Pa, f = 120 Hz, rho c = 415:
     % I=0.002711, u=0.003614, xi=4.793e-6, p_rms=1.061, Lp=94.49
