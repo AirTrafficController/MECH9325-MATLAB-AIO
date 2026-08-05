@@ -83,6 +83,14 @@ function out = findCalculator(userQuery, context, opts)
     end
     if nargout, out = repmat(struct('query','','matches',[]), 1, numel(parts)); end
 
+    % Optional online re-rank: ONE request for the whole query (not one per
+    % part), with the tool catalogue included so the model knows what each
+    % tool does. aiPicks(s) is the suggestion for part s, "" if unavailable.
+    aiPicks = strings(1, numel(parts));
+    if opts.useLLM
+        aiPicks = llmSuggestAll(parts, idx);
+    end
+
     for s = 1:numel(parts)
         sc = scorePart(parts(s), ctxTok, idx);
         [sv, order] = sort(sc, 'descend');
@@ -98,11 +106,8 @@ function out = findCalculator(userQuery, context, opts)
                 fprintf('   %d. %s%s\n', r, idx.tools(order(r)), tag);
                 matches(end+1) = struct('tool', idx.tools(order(r)), 'score', sv(r)); %#ok<AGROW>
             end
-            if opts.useLLM                          % optional online re-rank
-                pick = llmPickCalculator(parts(s), idx.tools(order(sv>0)));
-                if strlength(pick) > 0
-                    fprintf('   (running normally - suggests: %s)\n', pick);
-                end
+            if opts.useLLM && s <= numel(aiPicks) && strlength(aiPicks(s)) > 0
+                fprintf('   (running normally - suggests: %s)\n', aiPicks(s));
             end
             fprintf('\n');
         end
@@ -142,6 +147,7 @@ function idx = buildIndex(csv)
     keep = ~ismissing(T.ToolName) & strlength(strtrim(T.ToolName)) > 0;
     idx.tools = T.ToolName(keep);
     keywords  = T.Keywords(keep);
+    idx.keywords = keywords;                      % kept for the AI catalogue
     N = numel(idx.tools);
     idx.N = N;
 
@@ -243,29 +249,70 @@ end
 %       setenv('FINDCALC_LLM_KEY','<your fresh key>')
 %       setenv('FINDCALC_LLM_URL','https://.../v1beta/models/<model>:generateContent')
 % ======================================================================
-function pick = llmPickCalculator(query, candidates)
-    pick = "";
+function picks = llmSuggestAll(parts, idx)
+%LLMSUGGESTALL  ONE request that maps every part to a tool, given the tool
+%   catalogue (name + keywords) so the model understands the tools. Returns a
+%   string per part ("" where not resolved). Fewer requests -> fewer 429s.
+    picks = strings(1, numel(parts));
     key = string(getenv('FINDCALC_LLM_KEY'));
     url = string(getenv('FINDCALC_LLM_URL'));
     if strlength(key) == 0 || strlength(url) == 0
-        fprintf('   (re-rank skipped: FINDCALC_LLM_KEY / FINDCALC_LLM_URL not set)\n');
+        fprintf('(re-rank skipped: FINDCALC_LLM_KEY / FINDCALC_LLM_URL not set)\n\n');
         return;
     end
-    prompt = "You are picking ONE calculator for a physics/acoustics question. " + ...
-        "Reply with the exact tool name only, no other text." + newline + ...
-        "Question: " + query + newline + "Tools:" + newline + ...
-        strjoin("- " + string(candidates(:)), newline);
+    % Catalogue: "ToolName :: first ~12 keywords" so the model knows each tool.
+    cat = strings(idx.N, 1);
+    for i = 1:idx.N
+        kw = tokenize(idx.keywords(i));
+        kw = kw(1:min(12, numel(kw)));
+        cat(i) = idx.tools(i) + " :: " + strjoin(kw, " ");
+    end
+    partList = strjoin(compose("%d) %s", (1:numel(parts)).', parts(:)), newline);
+    prompt = "Map each question PART to exactly ONE tool from the CATALOGUE." + newline + ...
+        "Use only tool names from the catalogue. Reply with one line per part in the" + ...
+        " form '<part number>: <exact tool name>' and nothing else." + newline + newline + ...
+        "CATALOGUE:" + newline + strjoin(cat, newline) + newline + newline + ...
+        "PARTS:" + newline + partList;
     body = struct('contents', struct('parts', struct('text', prompt)));
     try
-        opt = weboptions('MediaType','application/json','Timeout',15, ...
+        opt = weboptions('MediaType','application/json','Timeout',20, ...
                          'HeaderFields',{'x-goog-api-key', char(key)});
         resp = webwrite(char(url), body, opt);
-        pick = strtrim(string(resp.candidates(1).content.parts(1).text));
+        txt  = string(resp.candidates(1).content.parts(1).text);
+        picks = parsePicks(txt, numel(parts), idx.tools);
+        fprintf('(re-rank: running normally - 1 request for %d parts)\n\n', numel(parts));
     catch me
         reason = me.message;
         if contains(reason, '429'), reason = 'rate limit / quota'; end
-        fprintf('   (it is shitting itself: %s - using local ranking)\n', reason);
-        pick = "";
+        fprintf('(re-rank: it is shitting itself: %s - using local ranking)\n\n', reason);
+        picks = strings(1, numel(parts));
+    end
+end
+
+function picks = parsePicks(txt, n, tools)
+%PARSEPICKS  Read "k: tool name" lines; snap each to a real catalogue name.
+    picks = strings(1, n);
+    lines = splitlines(txt);
+    for L = lines(:).'
+        m = regexp(L, '^\s*(\d+)\s*[:\)-]\s*(.+?)\s*$', 'tokens', 'once');
+        if isempty(m), continue; end
+        k = str2double(m{1});
+        if isnan(k) || k < 1 || k > n, continue; end
+        picks(k) = snapTool(strtrim(m{2}), tools);
+    end
+end
+
+function name = snapTool(guess, tools)
+%SNAPTOOL  Match the model's text to a real tool name (exact, then contains).
+    name = "";
+    g = lower(strtrim(guess));
+    for i = 1:numel(tools)
+        if strcmpi(tools(i), g), name = tools(i); return; end
+    end
+    for i = 1:numel(tools)
+        if contains(lower(tools(i)), g) || contains(g, lower(tools(i)))
+            name = tools(i); return;
+        end
     end
 end
 
