@@ -63,6 +63,7 @@ function out = findCalculator(userQuery, context, opts)
     context = capLen(context, MAXLEN);
 
     % --- split a single pasted blob into parts + preamble ---------------
+    autoCtx = "";
     if isscalar(partsIn)
         [parts, autoCtx] = splitParts(partsIn);
     else
