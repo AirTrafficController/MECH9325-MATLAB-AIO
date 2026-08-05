@@ -101,7 +101,7 @@ function out = findCalculator(userQuery, context, opts)
             if opts.useLLM                          % optional online re-rank
                 pick = llmPickCalculator(parts(s), idx.tools(order(sv>0)));
                 if strlength(pick) > 0
-                    fprintf('   (AI is running normally - suggests: %s)\n', pick);
+                    fprintf('   (running normally - suggests: %s)\n', pick);
                 end
             end
             fprintf('\n');
@@ -248,7 +248,7 @@ function pick = llmPickCalculator(query, candidates)
     key = string(getenv('FINDCALC_LLM_KEY'));
     url = string(getenv('FINDCALC_LLM_URL'));
     if strlength(key) == 0 || strlength(url) == 0
-        fprintf('   (AI re-rank skipped: FINDCALC_LLM_KEY / FINDCALC_LLM_URL not set)\n');
+        fprintf('   (re-rank skipped: FINDCALC_LLM_KEY / FINDCALC_LLM_URL not set)\n');
         return;
     end
     prompt = "You are picking ONE calculator for a physics/acoustics question. " + ...
@@ -263,8 +263,8 @@ function pick = llmPickCalculator(query, candidates)
         pick = strtrim(string(resp.candidates(1).content.parts(1).text));
     catch me
         reason = me.message;
-        if contains(reason, '429'), reason = 'rate limit / quota (HTTP 429)'; end
-        fprintf('   (AI is shitting itself: %s - using local ranking)\n', reason);
+        if contains(reason, '429'), reason = 'rate limit / quota'; end
+        fprintf('   (it is shitting itself: %s - using local ranking)\n', reason);
         pick = "";
     end
 end
