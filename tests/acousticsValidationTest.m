@@ -154,13 +154,13 @@ function testBarrierInsertionTunnel(t)
 end
 
 function testPanelTLskylight(t)
-    % Resonant single panel (glass skylight). Formula-consistency check
-    % (no official answer key): fn and TL from mass+stiffness model.
-    R = acoustics.panelTL([100 1000], 945, 0.8e-3, 0.208, 0.095, 0.017, 2500);
-    verifyEqual(t, R.fn, 188.76, 'AbsTol', 0.1);
-    verifyEqual(t, R.surfaceMass, 42.5, 'AbsTol', 1e-9);   % rho*thickness
-    verifyEqual(t, R.TL(1), 38.33, 'AbsTol', 0.1);         % 100 Hz (below fn)
-    verifyEqual(t, R.TL(2), 49.84, 'AbsTol', 0.1);         % 1000 Hz (above fn)
+    % Resonant single panel (glass skylight), marked-correct answers:
+    % 197x98 mm, 14 mm, 1045 N -> 0.8 mm. fn=221.3, TL=42.3 (stiffness) / 48.5 (mass).
+    R = acoustics.panelTL([100 1000], 1045, 0.8e-3, 0.197, 0.098, 0.014, 2500);
+    verifyEqual(t, R.fn, 221.3, 'AbsTol', 0.1);
+    verifyEqual(t, R.surfaceMass, 35, 'AbsTol', 1e-9);     % rho*thickness
+    verifyEqual(t, R.TL(1), 42.3, 'AbsTol', 0.1);          % 100 Hz (below fn, stiffness)
+    verifyEqual(t, R.TL(2), 48.5, 'AbsTol', 0.1);          % 1000 Hz (above fn, mass law)
 end
 
 function testPlywoodMassLawTLis21(t)
