@@ -1,7 +1,7 @@
-function findCalculator(userQuery, context)
+function out = findCalculator(userQuery, context)
 %FINDCALCULATOR  Map a multi-part exam question to the calculators to use.
 %   FINDCALCULATOR(userQuery) takes either
-%     * a string ARRAY, one element per sub-question, OR
+%     * a string ARRAY / cellstr, one element per sub-question, OR
 %     * a single pasted string of the WHOLE question - it is split
 %       automatically on part markers "(i) (ii) (a) (b) (1) (2)" (and on
 %       newlines / semicolons), with any text before the first marker used
@@ -10,119 +10,219 @@ function findCalculator(userQuery, context)
 %   calculators.csv: columns ToolName, Keywords), best first.
 %
 %   FINDCALCULATOR(userQuery, context) forces an extra shared context string
-%   that is mixed into every part (overrides the auto-detected preamble).
+%   mixed into every part (overrides the auto-detected preamble).
 %
-%   Matching removes stop-words, keeps short acronyms (Lp, LA, Leq, TL, NR,
-%   SIL, ...) and scores shared words by inverse document frequency (IDF) so
-%   generic words ("plane", "air", "sound") don't dominate a rare, decisive
-%   word ("intensity", "reverberation"). The part's own words decide; the
-%   context only breaks near-ties. It uses one scoring method everywhere -
-%   IDF keyword overlap in base MATLAB, with no toolbox dependence - so the
-%   ranking is identical on exam lab machines and on a full install.
+%   S = FINDCALCULATOR(...) also returns a struct array (one element per
+%   part) with fields .query and .matches (ranked ToolName/score), for
+%   programmatic use and testing; nothing is printed differently.
+%
+%   HOW IT MATCHES (deterministic, no toolboxes):
+%     * Tokenises, drops stop-words, keeps short acronyms (Lp, LA, Leq, TL...).
+%     * Scores shared words by inverse document frequency (IDF) so generic
+%       words ("plane", "air", "sound") can't outweigh a rare decisive word
+%       ("intensity", "reverberation"). Exact hits score full IDF; a plural
+%       or prefix/stem hit ("reverb"->"reverberation") scores half.
+%     * The part's own words decide; context only breaks near-ties.
+%
+%   PERFORMANCE: the CSV is parsed and turned into an INVERTED INDEX
+%   (token -> document IDs, with IDF weights) exactly once, then cached in a
+%   persistent variable keyed on the file's timestamp. Repeat queries do no
+%   file I/O and touch only the documents a query actually mentions, so a
+%   lookup is O(number of query words), not O(number of calculators).
 %
 %   Examples:
-%       findCalculator("A plane wave ... Determine (i) Intensity (ii) particle velocity (iii) SPL")
-%       findCalculator(["overall A-weighted level"; "level after a barrier in dB(A)"])
-
-    if nargin < 1
-        userQuery = "A plane wave in air. Determine (i) intensity (ii) particle velocity (iii) SPL";
+%       findCalculator("A plane wave ... (i) Intensity (ii) particle velocity")
+%       s = findCalculator(["overall A-weighted level"; "barrier reduction dB(A)"]);
+    arguments
+        userQuery {mustBeTextLike} = ...
+            "A plane wave in air. Determine (i) intensity (ii) particle velocity (iii) SPL"
+        context   {mustBeTextLike} = ""
     end
-    if nargin < 2, context = ""; end
-    userQuery = string(userQuery);
+
+    % --- normalise + validate input ------------------------------------
+    partsIn = normaliseText(userQuery);          % string row, trimmed, no blanks
+    context = strtrim(strjoin(normaliseText(context), " "));
+    if isempty(partsIn)
+        fprintf('--- Solution Pipeline ---\n(empty query - type the quantity you want)\n');
+        if nargout, out = struct('query', {}, 'matches', {}); end
+        return;
+    end
+    MAXLEN = 5000;                               % guard against pathological input
+    partsIn = arrayfun(@(s) capLen(s, MAXLEN), partsIn);
+    context = capLen(context, MAXLEN);
 
     % --- split a single pasted blob into parts + preamble ---------------
-    autoCtx = "";
-    if isscalar(userQuery)
-        [parts, autoCtx] = splitParts(userQuery);
+    if isscalar(partsIn)
+        [parts, autoCtx] = splitParts(partsIn);
     else
-        parts = userQuery(:);
+        parts = partsIn(:).';
     end
-    if strlength(strtrim(context)) == 0, context = autoCtx; end
+    if strlength(context) == 0, context = autoCtx; end
 
-    % --- load the calculator database -----------------------------------
-    here = fileparts(mfilename('fullpath'));
-    csv  = fullfile(here, 'calculators.csv');
-    if ~isfile(csv)
-        error('findCalculator:noCSV', 'calculators.csv not found next to findCalculator.m');
-    end
-    T = readtable(csv, 'TextType', 'string', 'Delimiter', ',');
-    tools = T.ToolName;
-    descs = T.Keywords;
-
-    descTokens = arrayfun(@(s) tokenize(s), descs, 'UniformOutput', false);
-    idf = computeIDF(descTokens);
+    % --- load (cached) inverted index ----------------------------------
+    idx = getIndex();                            % persistent, timestamp-keyed
     ctxTok = tokenize(context);
 
-    % --- rank tools for each part ---------------------------------------
+    % --- rank tools for each part --------------------------------------
+    K = 3;
     fprintf('--- Solution Pipeline ---\n');
     if strlength(strtrim(context)) > 0
         fprintf('Context: %s\n\n', truncate(context, 90));
     end
-    K = 3;                                        % show top-K candidates
+    if nargout, out = repmat(struct('query','','matches',[]), 1, numel(parts)); end
+
     for s = 1:numel(parts)
-        sc = scoreVector(parts(s), ctxTok, descTokens, idf);
+        sc = scorePart(parts(s), ctxTok, idx);
         [sv, order] = sort(sc, 'descend');
         fprintf('Part %d  "%s"\n', s, truncate(parts(s), 70));
+        matches = struct('tool', {}, 'score', {});
         if sv(1) <= 0
             fprintf('   (no confident match - rephrase with the quantity you want)\n\n');
-            continue;
+        else
+            for r = 1:min(K, numel(order))
+                if sv(r) <= 0, break; end
+                tag = ''; if r == 1, tag = '   <- best'; end
+                fprintf('   %d. %s%s\n', r, idx.tools(order(r)), tag);
+                matches(end+1) = struct('tool', idx.tools(order(r)), 'score', sv(r)); %#ok<AGROW>
+            end
+            fprintf('\n');
         end
-        shown = 0;
-        for r = 1:min(K, numel(order))
-            if sv(r) <= 0, break; end
-            tag = ''; if r == 1, tag = '   <- best'; end
-            fprintf('   %d. %s%s\n', r, tools(order(r)), tag);
-            shown = shown + 1;
+        if nargout
+            out(s).query = char(parts(s));
+            out(s).matches = matches;
         end
-        if shown == 0
-            fprintf('   (no confident match)\n');
-        end
-        fprintf('\n');
     end
 end
 
 % ======================================================================
-function sc = scoreVector(part, ctxTok, descTokens, idf)
-%SCOREVECTOR  IDF-weighted keyword-overlap score over all tools for one part.
-%   The part's own words decide; the context adds only a faint tie-breaking
-%   nudge, so a decisive word in the part cannot be swamped by the preamble.
-%   One method is used everywhere (no toolbox dependence) so the ranking is
-%   identical on exam lab machines and here - unlike length-normalised cosine,
-%   IDF overlap does not penalise a tool for having a longer keyword list.
-    stepTok = tokenize(part);
-    stepScore = idfScore(stepTok, descTokens, idf);
-    if max(stepScore) == 0
-        sc = idfScore(ctxTok, descTokens, idf);   % nothing in the part itself
-    else
-        sc = stepScore + 1e-3 * idfScore(ctxTok, descTokens, idf);
+% Cached inverted index
+% ======================================================================
+function idx = getIndex()
+    persistent CACHE
+    here = fileparts(mfilename('fullpath'));
+    csv  = fullfile(here, 'calculators.csv');
+    d = dir(csv);
+    if isempty(d)
+        error('findCalculator:noCSV', 'calculators.csv not found next to findCalculator.m');
     end
+    key = sprintf('%s|%d|%.6f', csv, d.bytes, d.datenum);
+    if ~isempty(CACHE) && strcmp(CACHE.key, key)
+        idx = CACHE; return;                      % cache hit - no file I/O
+    end
+    idx = buildIndex(csv);
+    idx.key = key;
+    CACHE = idx;
 end
 
-% ======================================================================
-function sc = idfScore(qtok, descTokens, idf)
-    N = numel(descTokens);
-    sc = zeros(N, 1);
+function idx = buildIndex(csv)
+    T = readtable(csv, 'TextType', 'string', 'Delimiter', ',');
+    if ~all(ismember({'ToolName','Keywords'}, T.Properties.VariableNames))
+        error('findCalculator:badCSV', ...
+            'calculators.csv must have columns ToolName and Keywords.');
+    end
+    keep = ~ismissing(T.ToolName) & strlength(strtrim(T.ToolName)) > 0;
+    idx.tools = T.ToolName(keep);
+    keywords  = T.Keywords(keep);
+    N = numel(idx.tools);
+    idx.N = N;
+
+    descTokens = arrayfun(@(s) tokenize(s), keywords, 'UniformOutput', false);
+
+    % document frequency per token, in one pass (hash map)
+    df = containers.Map('KeyType','char','ValueType','double');
     for i = 1:N
-        shared = intersect(qtok, descTokens{i});
-        s = 0;
-        for k = 1:numel(shared)
-            key = char(shared(k));
-            if isKey(idf, key), s = s + idf(key); end
+        for w = unique(descTokens{i})
+            k = char(w);
+            if isKey(df, k), df(k) = df(k) + 1; else, df(k) = 1; end
         end
-        sc(i) = s;
+    end
+    % IDF + inverted postings (token -> doc ids)
+    idx.idf      = containers.Map('KeyType','char','ValueType','double');
+    idx.postings = containers.Map('KeyType','char','ValueType','any');
+    vocab = keys(df);
+    for v = 1:numel(vocab)
+        k = vocab{v};
+        idx.idf(k) = log((N + 1)/(df(k) + 0.5));
+        idx.postings(k) = zeros(1,0);
+    end
+    for i = 1:N
+        for w = unique(descTokens{i})
+            k = char(w);
+            idx.postings(k) = [idx.postings(k), i];
+        end
+    end
+    idx.vocab = vocab;                            % cellstr, for prefix fallback
+end
+
+% ======================================================================
+% Scoring
+% ======================================================================
+function sc = scorePart(part, ctxTok, idx)
+%   Part words decide; context adds a faint tie-break nudge only.
+    stepScore = scoreTokens(tokenize(part), idx);
+    if max(stepScore) == 0
+        sc = scoreTokens(ctxTok, idx);            % nothing usable in the part
+    else
+        sc = stepScore + 1e-3 * scoreTokens(ctxTok, idx);
+    end
+end
+
+function sc = scoreTokens(qtok, idx)
+    sc = zeros(idx.N, 1);
+    for w = unique(qtok)
+        [ids, wgt] = lookup(char(w), idx);
+        for j = 1:numel(ids)
+            sc(ids(j)) = sc(ids(j)) + wgt(j);
+        end
+    end
+end
+
+function [ids, wgt] = lookup(w, idx)
+%LOOKUP  Doc IDs (and IDF weights) a token hits: exact, then plural, then prefix.
+    ids = zeros(1,0); wgt = zeros(1,0);
+    if isKey(idx.postings, w)
+        ids = idx.postings(w); wgt = repmat(idx.idf(w), size(ids)); return;
+    end
+    if numel(w) > 3 && w(end) == 's'              % plural -> singular
+        w2 = w(1:end-1);
+        if isKey(idx.postings, w2)
+            ids = idx.postings(w2); wgt = repmat(idx.idf(w2), size(ids)); return;
+        end
+    end
+    if numel(w) >= 4                              % stem / prefix, at half weight
+        for i = 1:numel(idx.vocab)
+            t = idx.vocab{i};
+            L = min(numel(t), numel(w));
+            if L >= 4 && strncmp(t, w, L)
+                pid = idx.postings(t);
+                ids = [ids, pid]; %#ok<AGROW>
+                wgt = [wgt, repmat(0.5*idx.idf(t), size(pid))]; %#ok<AGROW>
+            end
+        end
     end
 end
 
 % ======================================================================
-function idf = computeIDF(descTokens)
-    N = numel(descTokens);
-    vocab = unique([descTokens{:}]);
-    idf = containers.Map('KeyType', 'char', 'ValueType', 'double');
-    for v = 1:numel(vocab)
-        w = vocab(v);
-        df = sum(cellfun(@(d) any(d == w), descTokens));
-        idf(char(w)) = log((N + 1)/(df + 0.5));   % rarer word -> higher weight
+% Input handling
+% ======================================================================
+function mustBeTextLike(x)
+    if ~(ischar(x) || isstring(x) || iscellstr(x)) %#ok<ISCLSTR>
+        error('findCalculator:type', ...
+            'Query must be text (char, string, or cellstr), not %s.', class(x));
     end
+end
+
+function s = normaliseText(x)
+%NORMALISETEXT  Coerce char/string/cellstr to a clean string row vector.
+    s = string(x);
+    s = s(:).';
+    s(ismissing(s)) = "";
+    s = strtrim(s);
+    s = s(strlength(s) > 0);
+end
+
+function s = capLen(s, n)
+    if strlength(s) > n, s = extractBefore(s, n+1); end
 end
 
 % ======================================================================
@@ -132,20 +232,19 @@ function [parts, pre] = splitParts(q)
 %   returned as PRE (shared context).
     qc = char(q(1));
     pat = '\((?:[ivxlcdm]{1,4}|[a-zA-Z]|\d{1,2})\)';    % (i) (ii) (a) (1)
-    idx = regexp(qc, pat, 'start');
-    if numel(idx) >= 1
-        pre = string(strtrim(qc(1:max(idx(1)-1,1))));
-        if idx(1) == 1, pre = ""; end
-        bounds = [idx, numel(qc)+1];
-        parts = strings(numel(idx), 1);
-        for i = 1:numel(idx)
+    ix = regexp(qc, pat, 'start');
+    if ~isempty(ix)
+        if ix(1) == 1, pre = ""; else, pre = string(strtrim(qc(1:ix(1)-1))); end
+        bounds = [ix, numel(qc)+1];
+        parts = strings(1, numel(ix));
+        for i = 1:numel(ix)
             parts(i) = strtrim(string(qc(bounds(i):bounds(i+1)-1)));
         end
     else
         pre = "";
         p = strtrim(split(string(qc), [newline, ";"]));
         p = p(strlength(p) > 0);
-        parts = p;
+        parts = reshape(p, 1, []);
         if isempty(parts), parts = string(qc); end
     end
 end
@@ -160,16 +259,22 @@ end
 
 % ======================================================================
 function t = tokenize(str)
+    str = string(str);
+    if ~isscalar(str) || ismissing(str) || strlength(str) == 0
+        t = strings(1,0); return;
+    end
     t = split(lower(strtrim(str)));
     t = erase(t, [",", ".", ";", ":", "?", "!", "(", ")", "-", "/", "=", ...
                   "’", "‘", char(8220), char(8221), """"]);
     t = t(strlength(t) >= 2);               % keep acronyms (lp, la, tl, nr)
     t = t(~ismember(t, stopWords()));
-    t = t(:).';
+    t = reshape(t, 1, []);
 end
 
 function w = stopWords()
-    w = ["the","a","an","of","to","in","for","at","on","over","is","are", ...
+    persistent SW
+    if isempty(SW)
+        SW = ["the","a","an","of","to","in","for","at","on","over","is","are", ...
          "be","this","that","which","have","has","had","it","its","as","by", ...
          "with","from","and","or","so","if","then","than","into","out","up", ...
          "down","about","only","very","can","will","use","using","calculate", ...
@@ -178,6 +283,8 @@ function w = stopWords()
          "two","eight","period","hour","hours","day","working","phase", ...
          "phases","steady","still","number","rate","we","you","they","there", ...
          "here","what","when","how","following","follows","given","such", ...
-         "also","ear","operator","its","assume","ii","iii","iv","vi","vii", ...
+         "also","ear","operator","assume","ii","iii","iv","vi","vii", ...
          "viii","ix","corresponding","acting"];
+    end
+    w = SW;
 end
