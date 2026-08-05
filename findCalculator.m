@@ -1,4 +1,4 @@
-function out = findCalculator(userQuery, context)
+function out = findCalculator(userQuery, context, opts)
 %FINDCALCULATOR  Map a multi-part exam question to the calculators to use.
 %   FINDCALCULATOR(userQuery) takes either
 %     * a string ARRAY / cellstr, one element per sub-question, OR
