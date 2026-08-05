@@ -160,7 +160,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Insulation: TL from coefficient','transmission loss tl coefficient alpha t', @app.buildTLcoef};
             c(end+1,:) = {'Insulation: panel resonance frequency','panel resonance natural frequency stiffness mass', @app.buildPanelRes};
             c(end+1,:) = {'Insulation: panel TL (resonant, mass+stiffness)','panel transmission loss resonant mass stiffness natural frequency deflection force glass skylight tl damping', @app.buildPanelTL};
-            c(end+1,:) = {'Insulation: barrier added to a spectrum (dB(A) before/after)','barrier disk disc panel mass law spectrum octave band a-weighted before after reduction tunnel foam insertion', @app.buildBarrier};
+            c(end+1,:) = {'Insulation: barrier added to a spectrum (dB(A) before/after)','barrier disk disc panel foam reinforced polyurethane mass law spectrum octave band a-weighted overall sound level before after reduction tunnel duct insertion fitted thickness', @app.buildBarrier};
 
             c(end+1,:) = {'Muffler: sudden area change','muffler silencer area change transmission loss reactive', @app.buildAreaChange};
             c(end+1,:) = {'Muffler: simple expansion chamber','muffler silencer expansion chamber transmission loss reactive quarter wave', @app.buildExpChamber};
