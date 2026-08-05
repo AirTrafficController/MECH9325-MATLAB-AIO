@@ -88,7 +88,7 @@ function out = findCalculator(userQuery, context, opts)
     % tool does. aiPicks(s) is the suggestion for part s, "" if unavailable.
     aiPicks = strings(1, numel(parts));
     if opts.useLLM
-        aiPicks = llmSuggestAll(parts, idx);
+        aiPicks = llmSuggestAll(parts, context, idx);
     end
 
     for s = 1:numel(parts)
@@ -107,7 +107,11 @@ function out = findCalculator(userQuery, context, opts)
                 matches(end+1) = struct('tool', idx.tools(order(r)), 'score', sv(r)); %#ok<AGROW>
             end
             if opts.useLLM && s <= numel(aiPicks) && strlength(aiPicks(s)) > 0
-                fprintf('   (running normally - suggests: %s)\n', aiPicks(s));
+                if aiPicks(s) == idx.tools(order(1))
+                    fprintf('   (AI agrees: %s)\n', aiPicks(s));
+                else
+                    fprintf('   (AI suggests instead: %s)\n', aiPicks(s));
+                end
             end
             fprintf('\n');
         end
@@ -258,9 +262,10 @@ end
 %       setenv('FINDCALC_LLM_KEY','<your fresh key>')
 %       setenv('FINDCALC_LLM_URL','https://.../v1beta/models/<model>:generateContent')
 % ======================================================================
-function picks = llmSuggestAll(parts, idx)
-%LLMSUGGESTALL  ONE request that maps every part to a tool, given the tool
-%   catalogue (name + keywords) so the model understands the tools. Returns a
+function picks = llmSuggestAll(parts, context, idx)
+%LLMSUGGESTALL  ONE request that maps every part to a tool. The model is given
+%   the shared CONTEXT (so a terse part like "TL at 100 Hz" is understood in
+%   the light of the whole question) and the full tool catalogue. Returns a
 %   string per part ("" where not resolved). Fewer requests -> fewer 429s.
     picks = strings(1, numel(parts));
     key = string(getenv('FINDCALC_LLM_KEY'));
@@ -269,18 +274,27 @@ function picks = llmSuggestAll(parts, idx)
         fprintf('(re-rank skipped: FINDCALC_LLM_KEY / FINDCALC_LLM_URL not set)\n\n');
         return;
     end
-    % Catalogue: "ToolName :: first ~12 keywords" so the model knows each tool.
+    % Catalogue: "ToolName :: keywords" (up to ~24 words) so the model knows
+    % what each tool computes. Cheap on Haiku, and richer = better picks.
     cat = strings(idx.N, 1);
     for i = 1:idx.N
         kw = tokenize(idx.keywords(i));
-        kw = kw(1:min(12, numel(kw)));
+        kw = kw(1:min(24, numel(kw)));
         cat(i) = idx.tools(i) + " :: " + strjoin(kw, " ");
     end
     partList = strjoin(compose("%d) %s", (1:numel(parts)).', parts(:)), newline);
-    prompt = "Map each question PART to exactly ONE tool from the CATALOGUE." + newline + ...
-        "Use only tool names from the catalogue. Reply with one line per part in the" + ...
-        " form '<part number>: <exact tool name>' and nothing else." + newline + newline + ...
-        "CATALOGUE:" + newline + strjoin(cat, newline) + newline + newline + ...
+    ctxLine = "";
+    if strlength(strtrim(context)) > 0
+        ctxLine = "SHARED CONTEXT (applies to every part):" + newline + ...
+                  string(context) + newline + newline;
+    end
+    prompt = "You choose the single best acoustics calculator for each PART of an " + ...
+        "exam question. Use the SHARED CONTEXT to understand terse parts. Pick " + ...
+        "exactly ONE tool per part from the CATALOGUE; the same tool may serve " + ...
+        "several parts. Reply with one line per part, '<part number>: <exact tool " + ...
+        "name>', copying the tool name verbatim, and nothing else." + newline + newline + ...
+        ctxLine + ...
+        "CATALOGUE (tool :: what it covers):" + newline + strjoin(cat, newline) + newline + newline + ...
         "PARTS:" + newline + partList;
 
     anthropic = contains(lower(url), "anthropic.com");   % provider from the URL
