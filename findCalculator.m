@@ -248,8 +248,7 @@ function pick = llmPickCalculator(query, candidates)
     key = string(getenv('FINDCALC_LLM_KEY'));
     url = string(getenv('FINDCALC_LLM_URL'));
     if strlength(key) == 0 || strlength(url) == 0
-        warning('findCalculator:noLLMkey', ...
-            'useLLM set but FINDCALC_LLM_KEY / FINDCALC_LLM_URL not in environment - skipping AI re-rank.');
+        fprintf('   (AI re-rank skipped: FINDCALC_LLM_KEY / FINDCALC_LLM_URL not set)\n');
         return;
     end
     prompt = "You are picking ONE calculator for a physics/acoustics question. " + ...
@@ -263,7 +262,9 @@ function pick = llmPickCalculator(query, candidates)
         resp = webwrite(char(url), body, opt);
         pick = strtrim(string(resp.candidates(1).content.parts(1).text));
     catch me
-        warning('findCalculator:llmFailed', 'AI re-rank failed (%s) - using local ranking.', me.message);
+        reason = me.message;
+        if contains(reason, '429'), reason = 'rate limit / quota (HTTP 429)'; end
+        fprintf('   (AI re-rank unavailable: %s - using local ranking)\n', reason);
         pick = "";
     end
 end
