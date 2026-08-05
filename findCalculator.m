@@ -108,9 +108,9 @@ function out = findCalculator(userQuery, context, opts)
             end
             if opts.useLLM && s <= numel(aiPicks) && strlength(aiPicks(s)) > 0
                 if aiPicks(s) == idx.tools(order(1))
-                    fprintf('   (AI agrees: %s)\n', aiPicks(s));
+                    fprintf('   (highly matching)\n');
                 else
-                    fprintf('   (AI suggests instead: %s)\n', aiPicks(s));
+                    fprintf('   (suggests instead: %s)\n', aiPicks(s));
                 end
             end
             fprintf('\n');
