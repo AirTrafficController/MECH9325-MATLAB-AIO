@@ -101,7 +101,7 @@ function out = findCalculator(userQuery, context, opts)
             if opts.useLLM                          % optional online re-rank
                 pick = llmPickCalculator(parts(s), idx.tools(order(sv>0)));
                 if strlength(pick) > 0
-                    fprintf('   (AI suggests: %s)\n', pick);
+                    fprintf('   (AI is running normally - suggests: %s)\n', pick);
                 end
             end
             fprintf('\n');
@@ -264,7 +264,7 @@ function pick = llmPickCalculator(query, candidates)
     catch me
         reason = me.message;
         if contains(reason, '429'), reason = 'rate limit / quota (HTTP 429)'; end
-        fprintf('   (AI re-rank unavailable: %s - using local ranking)\n', reason);
+        fprintf('   (AI is shitting itself: %s - using local ranking)\n', reason);
         pick = "";
     end
 end
