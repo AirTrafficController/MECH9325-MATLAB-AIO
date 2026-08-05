@@ -245,7 +245,16 @@ end
 % is set.  Key is read from the environment at RUN TIME - never stored in
 % this file or committed.  Requires internet, so it is NOT usable in the
 % exam; the local ranking above is always the primary result.
-%   Set up (in your session, not in git):
+%   The provider is auto-detected from the URL (an anthropic.com URL uses the
+%   Anthropic Messages API with an x-api-key header; anything else uses the
+%   Google generateContent shape). Set up (in your session, not in git):
+%
+%     Anthropic / Claude Haiku (cheapest):
+%       setenv('FINDCALC_LLM_KEY','sk-ant-...')                      % a FRESH key
+%       setenv('FINDCALC_LLM_URL','https://api.anthropic.com/v1/messages')
+%       setenv('FINDCALC_LLM_MODEL','claude-haiku-4-5')             % optional (default)
+%
+%     Google / Gemini:
 %       setenv('FINDCALC_LLM_KEY','<your fresh key>')
 %       setenv('FINDCALC_LLM_URL','https://.../v1beta/models/<model>:generateContent')
 % ======================================================================
@@ -273,12 +282,25 @@ function picks = llmSuggestAll(parts, idx)
         " form '<part number>: <exact tool name>' and nothing else." + newline + newline + ...
         "CATALOGUE:" + newline + strjoin(cat, newline) + newline + newline + ...
         "PARTS:" + newline + partList;
-    body = struct('contents', struct('parts', struct('text', prompt)));
+
+    anthropic = contains(lower(url), "anthropic.com");   % provider from the URL
+    model = string(getenv('FINDCALC_LLM_MODEL'));
     try
-        opt = weboptions('MediaType','application/json','Timeout',20, ...
-                         'HeaderFields',{'x-goog-api-key', char(key)});
-        resp = webwrite(char(url), body, opt);
-        txt  = string(resp.candidates(1).content.parts(1).text);
+        if anthropic
+            if strlength(model) == 0, model = "claude-haiku-4-5"; end
+            body = struct('model', char(model), 'max_tokens', 1024, ...
+                'messages', {{struct('role','user','content',char(prompt))}});
+            opt = weboptions('MediaType','application/json','Timeout',20, ...
+                'HeaderFields', {'x-api-key', char(key); 'anthropic-version', '2023-06-01'});
+            resp = webwrite(char(url), body, opt);
+            txt  = string(resp.content(1).text);
+        else
+            body = struct('contents', {{struct('parts', {{struct('text', char(prompt))}})}});
+            opt = weboptions('MediaType','application/json','Timeout',20, ...
+                'HeaderFields', {'x-goog-api-key', char(key)});
+            resp = webwrite(char(url), body, opt);
+            txt  = string(resp.candidates(1).content.parts(1).text);
+        end
         picks = parsePicks(txt, numel(parts), idx.tools);
         fprintf('(re-rank: running normally - 1 request for %d parts)\n\n', numel(parts));
     catch me
