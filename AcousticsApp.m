@@ -574,18 +574,35 @@ classdef AcousticsApp < handle
         end
 
         function buildSOS(app)
-            gl = app.form(5);
-            app.W.T = app.numField(gl,1,'Temperature (deg C)',20);
-            app.W.R = app.numField(gl,2,'Gas constant R (J/kg/K)',287);
-            app.W.g = app.numField(gl,3,'gamma',1.4);
-            app.goButton(gl,4,@(o,e) app.runSOS());
-            app.W.out = app.resultBox(gl,5);
+            gl = app.form(9);
+            app.W.T  = app.txtField(gl,1,'Temperature (deg C)  [forward -> c]','20');
+            app.W.c  = app.txtField(gl,2,'or speed c (m/s)  [inverse -> temp]','');
+            app.W.dd = app.txtField(gl,3,'or distance d (m)','');
+            app.W.tt = app.txtField(gl,4,'and travel time t (s)','');
+            app.W.R  = app.numField(gl,5,'Gas constant R (J/kg/K)',287);
+            app.W.g  = app.numField(gl,6,'gamma',1.4);
+            app.note(gl,7,['Forward: c = sqrt(gamma*R*T0). Inverse (temperature from ' ...
+                'speed): T0 = c^2/(gamma*R). Give distance+time and c = d/t is used ' ...
+                '(e.g. 8 m, 0.02 s -> c=400 -> ~125 degC). Fill ONE of the three.']);
+            app.goButton(gl,8,@(o,e) app.runSOS());
+            app.W.out = app.resultBox(gl,9);
         end
         function runSOS(app)
-            R = acoustics.speedOfSoundTemp(app.W.T.Value, ...
-                'gamma',app.W.g.Value, 'R',app.W.R.Value);
-            app.W.out.Value = [{ sprintf('c = %.2f m/s  (T0 = %.1f K)', R.c, R.T0), ...
-                '', 'WORKING' }, R.steps];
+            nv = {'gamma',app.W.g.Value, 'R',app.W.R.Value};
+            try
+                if ~isempty(strtrim(app.W.T.Value))
+                    R = acoustics.speedOfSoundTemp(app.pnum(app.W.T), nv{:});
+                elseif ~isempty(strtrim(app.W.c.Value))
+                    R = acoustics.speedOfSoundTemp('c',app.pnum(app.W.c), nv{:});
+                else
+                    R = acoustics.speedOfSoundTemp('distance',app.pnum(app.W.dd), ...
+                        'time',app.pnum(app.W.tt), nv{:});
+                end
+            catch me
+                app.W.out.Value = {me.message}; return;
+            end
+            app.W.out.Value = [{ sprintf('c = %.2f m/s · Tc = %.1f degC (T0 = %.1f K)', ...
+                R.c, R.Tc, R.T0), '', 'WORKING' }, R.steps];
         end
 
         function buildParticle(app)

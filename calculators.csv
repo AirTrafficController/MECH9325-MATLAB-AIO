@@ -14,7 +14,7 @@ Max sources under limit,maximum sources limit number allowed criterion
 Subtract background,subtract background remove one source total measured
 One of N sources,one source of many identical divide each
 Wave relation c=f*lambda,wave speed frequency wavelength period omega wavenumber lambda
-Speed of sound (temperature),speed of sound temperature celsius kelvin gamma gas constant air
+Speed of sound (temperature),speed of sound temperature celsius kelvin gamma gas constant air hot pipe estimate from measured travel time distance microphones probes impulse inverse c=d/t degrees
 Particle motion,particle velocity displacement intensity pressure peak amplitude plane progressive wave air free field rho c sound pressure level spl rms
 Octave band edges,octave third band edges lower upper bandwidth centre frequency
 Pipe modes,pipe natural frequency closed open both ends quarter half wave resonance tube omega rad/s pressure node antinode standing wave

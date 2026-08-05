@@ -42,6 +42,15 @@ function testMassLawGluedLayers(t)
     verifyEqual(t, R100.TL, acoustics.massLawTL(100, 'M', 20).TL, 'AbsTol', 1e-9);
 end
 
+function testSpeedOfSoundInverse(t)
+    % Impulse crosses 8 m in 20 ms -> c=400 m/s -> hot air ~125 degC
+    R = acoustics.speedOfSoundTemp('distance', 8, 'time', 0.020);
+    verifyEqual(t, R.c,  400,   'AbsTol', 1e-9);
+    verifyEqual(t, R.Tc, 125.0, 'AbsTol', 0.1);
+    % round trip: forward at that temperature returns the same speed
+    verifyEqual(t, acoustics.speedOfSoundTemp(R.Tc).c, 400, 'AbsTol', 0.05);
+end
+
 function testAirWaterInterface(t)
     % 17 Pa in air onto water: pTrans=33.99 Pa, uTrans=2.297e-5 m/s, alpha=0.00112
     R = acoustics.interfaceImpedance(1.21*343, 1000*1480, 'p0', 17);
