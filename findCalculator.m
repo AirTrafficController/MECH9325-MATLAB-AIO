@@ -404,6 +404,7 @@ function t = tokenize(str)
                   "’", "‘", char(8220), char(8221), """"]);
     t = t(strlength(t) >= 2);               % keep acronyms (lp, la, tl, nr)
     t = t(~ismember(t, stopWords()));
+    t = t(cellfun('isempty', regexp(cellstr(t), '^\d+$', 'once')));  % drop bare numbers (100, 1000)
     t = reshape(t, 1, []);
 end
 
