@@ -30,13 +30,24 @@ function out = findCalculator(userQuery, context)
 %   file I/O and touch only the documents a query actually mentions, so a
 %   lookup is O(number of query words), not O(number of calculators).
 %
+%   Each part's best match carries a CONFIDENCE tag (high / medium / low)
+%   derived from how far ahead #1 is of #2 - a quick read on "how viable"
+%   the top pick is; a "low - near tie" tag means eyeball the runners-up.
+%
+%   FINDCALCULATOR(..., 'useLLM', true) additionally asks an online AI to
+%   pick a tool. This is OPTIONAL, needs internet + an API key read from the
+%   environment (FINDCALC_LLM_KEY / FINDCALC_LLM_URL), and is therefore NOT
+%   exam-safe; the local ranking is always the primary result. Off by default.
+%
 %   Examples:
 %       findCalculator("A plane wave ... (i) Intensity (ii) particle velocity")
 %       s = findCalculator(["overall A-weighted level"; "barrier reduction dB(A)"]);
+%       findCalculator("temperature from travel time", 'useLLM', true)  % online
     arguments
         userQuery {mustBeTextLike} = ...
             "A plane wave in air. Determine (i) intensity (ii) particle velocity (iii) SPL"
         context   {mustBeTextLike} = ""
+        opts.useLLM (1,1) logical = false   % OPTIONAL online AI re-rank (NOT exam-safe)
     end
 
     % --- normalise + validate input ------------------------------------
@@ -79,11 +90,18 @@ function out = findCalculator(userQuery, context)
         if sv(1) <= 0
             fprintf('   (no confident match - rephrase with the quantity you want)\n\n');
         else
+            conf = confidence(sv);
             for r = 1:min(K, numel(order))
                 if sv(r) <= 0, break; end
-                tag = ''; if r == 1, tag = '   <- best'; end
+                tag = ''; if r == 1, tag = sprintf('   <- best [%s]', conf); end
                 fprintf('   %d. %s%s\n', r, idx.tools(order(r)), tag);
                 matches(end+1) = struct('tool', idx.tools(order(r)), 'score', sv(r)); %#ok<AGROW>
+            end
+            if opts.useLLM                          % optional online re-rank
+                pick = llmPickCalculator(parts(s), idx.tools(order(sv>0)));
+                if strlength(pick) > 0
+                    fprintf('   (AI suggests: %s)\n', pick);
+                end
             end
             fprintf('\n');
         end
@@ -199,6 +217,53 @@ function [ids, wgt] = lookup(w, idx)
                 wgt = [wgt, repmat(0.5*idx.idf(t), size(pid))]; %#ok<AGROW>
             end
         end
+    end
+end
+
+% ======================================================================
+function c = confidence(sv)
+%CONFIDENCE  Label how decisive the top match is, from the score gap.
+    if numel(sv) < 2 || sv(2) <= 0
+        c = 'high'; return;
+    end
+    gap = (sv(1) - sv(2)) / sv(1);          % relative lead of #1 over #2
+    if     gap >= 0.40, c = 'high';
+    elseif gap >= 0.15, c = 'medium';
+    else,               c = 'low - near tie, check the runners-up';
+    end
+end
+
+% ======================================================================
+% OPTIONAL online AI re-rank.  Off unless useLLM=true AND the key env var
+% is set.  Key is read from the environment at RUN TIME - never stored in
+% this file or committed.  Requires internet, so it is NOT usable in the
+% exam; the local ranking above is always the primary result.
+%   Set up (in your session, not in git):
+%       setenv('FINDCALC_LLM_KEY','<your fresh key>')
+%       setenv('FINDCALC_LLM_URL','https://.../v1beta/models/<model>:generateContent')
+% ======================================================================
+function pick = llmPickCalculator(query, candidates)
+    pick = "";
+    key = string(getenv('FINDCALC_LLM_KEY'));
+    url = string(getenv('FINDCALC_LLM_URL'));
+    if strlength(key) == 0 || strlength(url) == 0
+        warning('findCalculator:noLLMkey', ...
+            'useLLM set but FINDCALC_LLM_KEY / FINDCALC_LLM_URL not in environment - skipping AI re-rank.');
+        return;
+    end
+    prompt = "You are picking ONE calculator for a physics/acoustics question. " + ...
+        "Reply with the exact tool name only, no other text." + newline + ...
+        "Question: " + query + newline + "Tools:" + newline + ...
+        strjoin("- " + string(candidates(:)), newline);
+    body = struct('contents', struct('parts', struct('text', prompt)));
+    try
+        opt = weboptions('MediaType','application/json','Timeout',15, ...
+                         'HeaderFields',{'x-goog-api-key', char(key)});
+        resp = webwrite(char(url), body, opt);
+        pick = strtrim(string(resp.candidates(1).content.parts(1).text));
+    catch me
+        warning('findCalculator:llmFailed', 'AI re-rank failed (%s) - using local ranking.', me.message);
+        pick = "";
     end
 end
 
