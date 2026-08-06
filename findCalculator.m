@@ -120,6 +120,7 @@ function out = findCalculator(userQuery, context, opts)
             out(s).matches = matches;
         end
     end
+    fprintf('(wrong or irrelevant pick? log a ticket: reportSearch("your question"))\n');
 end
 
 % ======================================================================
