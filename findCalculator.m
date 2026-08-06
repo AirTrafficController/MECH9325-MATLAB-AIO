@@ -334,13 +334,14 @@ function picks = llmSuggestAll(parts, context, idx)
             opt = weboptions('MediaType','application/json','Timeout',20, ...
                 'HeaderFields', {'x-api-key', char(key); 'anthropic-version', '2023-06-01'});
             resp = webwrite(char(url), body, opt);
-            txt  = string(resp.content(1).text);
+            txt  = string(elem(resp.content, 1).text);   % content may decode as cell
         else
             body = struct('contents', {{struct('parts', {{struct('text', char(prompt))}})}});
             opt = weboptions('MediaType','application/json','Timeout',20, ...
                 'HeaderFields', {'x-goog-api-key', char(key)});
             resp = webwrite(char(url), body, opt);
-            txt  = string(resp.candidates(1).content.parts(1).text);
+            cand = elem(resp.candidates, 1);
+            txt  = string(elem(cand.content.parts, 1).text);
         end
         picks = parsePicks(txt, numel(parts), idx.tools);
         fprintf('(re-rank: running normally - 1 request for %d parts)\n\n', numel(parts));
@@ -350,6 +351,12 @@ function picks = llmSuggestAll(parts, context, idx)
         fprintf('(re-rank: it is shitting itself: %s - using local ranking)\n\n', reason);
         picks = strings(1, numel(parts));
     end
+end
+
+function e = elem(x, k)
+%ELEM  k-th element of a JSON array that MATLAB decoded as EITHER a struct
+%   array or a cell array (single-element arrays often become cells).
+    if iscell(x), e = x{k}; else, e = x(k); end
 end
 
 function picks = parsePicks(txt, n, tools)

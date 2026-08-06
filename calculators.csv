@@ -2,7 +2,7 @@ ToolName,Keywords
 SPL <-> pressure,sound pressure level spl pascal pa rms pressure decibel convert reference prms
 Sound power level Lw,sound power watt w lw level reference convert
 Sound intensity level LI,sound intensity level li watt per square metre pressure rhoc convert
-Radiated power (point source),radiated power point source intensity pressure directivity q sphere hemisphere free field lw
+Radiated power (point source),radiated power point source spherical sphere hemisphere free field free space watt radiates single frequency at distance directivity q rms sound pressure sound pressure level sound intensity sound intensity level li spl lw
 Duct band power (pipe),duct pipe plane wave octave band spl intensity power cross section area total lw speaker reflected
 Peak <-> RMS & combine tones,peak rms amplitude combine tones quadrature pressures total pressure
 PSD -> RMS pressure,power spectral density psd integrate band mean square pressure spectrum
