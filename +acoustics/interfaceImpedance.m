@@ -28,7 +28,7 @@ function R = interfaceImpedance(z1, z2, opts)
     arguments
         z1 (1,1) double {mustBePositive}
         z2 (1,1) double {mustBePositive}
-        opts.p0 (1,1) double {mustBeNonnegative} = NaN
+        opts.p0 (1,1) double = NaN   % NaN default: no validator (MATLAB validates defaults)
         opts.Lp (1,1) double = NaN
     end
     R.ratio = z2/z1;
