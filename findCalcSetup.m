@@ -51,12 +51,18 @@ function findCalcSetup(key, url, model)
     setenv('FINDCALC_LLM_URL',   cfg.url);
     setenv('FINDCALC_LLM_MODEL', cfg.model);
 
-    fprintf('Saved AI config to %s\n', f);
-    fprintf('   URL   : %s\n', cfg.url);
-    fprintf('   Model : %s\n', cfg.model);
-    fprintf('It persists across MATLAB sessions and getAIO - no more setenv.\n');
-    fprintf('SECURITY: your key is stored in plaintext on this machine; keep it\n');
-    fprintf('private. On a shared PC run findCalcSetup(''clear'') when finished.\n');
+    fprintf('u on %s mode\n', modeLabel(cfg.model));
+end
+
+% ======================================================================
+function s = modeLabel(m)
+%MODELABEL  Reverse of modelAlias: real model id -> jokey mode name.
+    switch lower(strtrim(char(m)))
+        case 'claude-haiku-4-5', s = 'shit';
+        case 'claude-sonnet-5',  s = 'ok';
+        case 'claude-opus-5',    s = 'decent';
+        otherwise,               s = char(m);
+    end
 end
 
 % ======================================================================
