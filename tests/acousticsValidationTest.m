@@ -59,6 +59,16 @@ function testAirWaterInterface(t)
     verifyEqual(t, R.alphaT, 0.00112107, 'AbsTol', 1e-7);
 end
 
+function testAirWaterInterfaceFromSPL(t)
+    % 107 dB in air onto water (z2=1.5e6): peak 6.33 Pa, interface 12.66,
+    % uTrans 8.44e-6 m/s, alpha 0.00111
+    R = acoustics.interfaceImpedance(1.21*343, 1000*1500, 'Lp', 107);
+    verifyEqual(t, R.pIncident,  6.332,   'AbsTol', 0.01);   % (a) peak
+    verifyEqual(t, R.pInterface, 12.66,   'AbsTol', 0.01);   % (b)=(c)
+    verifyEqual(t, R.uTrans,     8.44e-6, 'AbsTol', 1e-8);   % (d)
+    verifyEqual(t, R.alphaT,     0.001106,'AbsTol', 1e-6);   % (e)
+end
+
 function testParticleMotionFullChain(t)
     % Plane wave, P_peak = 1.5 Pa, f = 120 Hz, rho c = 415:
     % I=0.002711, u=0.003614, xi=4.793e-6, p_rms=1.061, Lp=94.49

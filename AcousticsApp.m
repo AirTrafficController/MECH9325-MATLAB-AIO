@@ -1553,26 +1553,32 @@ classdef AcousticsApp < handle
         end
 
         function buildInterface(app)
-            gl = app.form(6);
+            gl = app.form(7);
             app.W.z1 = app.numField(gl,1,'Medium 1 (incident) rho c (rayls)',415);
-            app.W.z2 = app.numField(gl,2,'Medium 2 rho c (rayls)',1480000);
-            app.W.p0 = app.txtField(gl,3,'Incident pressure amplitude p0 (Pa)  [optional]','17');
-            app.note(gl,4,['alpha_t = 4r/(r+1)^2 (sound transmission coeff). ' ...
-                'With p0: pTrans = 2z2/(z1+z2)*p0, uTrans = pTrans/z2. ' ...
-                'Air->water: z1=1.21*343=415, z2=1000*1480=1.48e6.']);
-            app.goButton(gl,5,@(o,e) app.runInterface());
-            app.W.out = app.resultBox(gl,6);
+            app.W.z2 = app.numField(gl,2,'Medium 2 rho c (rayls)',1500000);
+            app.W.p0 = app.txtField(gl,3,'Incident pressure amplitude p0 (Pa)  [optional]','');
+            app.W.Lp = app.txtField(gl,4,'or incident SPL Lp (dB re 2e-5)  [-> peak p0]','107');
+            app.note(gl,5,['alpha_t = 4r/(r+1)^2 (sound transmission coeff). With p0 or Lp: ' ...
+                'incident peak, pTrans = 2z2/(z1+z2)*p0, total-at-interface = pTrans, uTrans = pTrans/z2. ' ...
+                'Air->water: z1=1.21*343=415, z2=1000*1500=1.5e6.']);
+            app.goButton(gl,6,@(o,e) app.runInterface());
+            app.W.out = app.resultBox(gl,7);
         end
         function runInterface(app)
-            if isempty(strtrim(app.W.p0.Value))
+            if ~isempty(strtrim(app.W.p0.Value))
+                R = acoustics.interfaceImpedance(app.W.z1.Value, app.W.z2.Value, ...
+                    'p0', app.pnum(app.W.p0));
+                head = sprintf('p0=%.4g Pa · pTrans=%.4g Pa · uTrans=%.4g m/s · alpha_t=%.4g', ...
+                    R.pIncident, R.pTrans, R.uTrans, R.alphaT);
+            elseif ~isempty(strtrim(app.W.Lp.Value))
+                R = acoustics.interfaceImpedance(app.W.z1.Value, app.W.z2.Value, ...
+                    'Lp', app.pnum(app.W.Lp));
+                head = sprintf('peak p0=%.4g Pa · interface/pTrans=%.4g Pa · uTrans=%.4g m/s · alpha_t=%.4g', ...
+                    R.pIncident, R.pTrans, R.uTrans, R.alphaT);
+            else
                 R = acoustics.interfaceImpedance(app.W.z1.Value, app.W.z2.Value);
                 head = sprintf('r = z2/z1 = %.4g · alpha_t = %.4g · alpha_r = %.4g · TL = %.2f dB', ...
                     R.ratio, R.alphaT, R.alphaR, R.TL);
-            else
-                R = acoustics.interfaceImpedance(app.W.z1.Value, app.W.z2.Value, ...
-                    'p0', app.pnum(app.W.p0));
-                head = sprintf('pTrans = %.4g Pa · uTrans = %.4g mm/s · alpha_t = %.4g · Tp = %.4g', ...
-                    R.pTrans, R.uTrans*1000, R.alphaT, R.Tp);
             end
             app.W.out.Value = [{ head, '', 'WORKING' }, R.steps];
         end
