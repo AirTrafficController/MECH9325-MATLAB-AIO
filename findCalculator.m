@@ -263,16 +263,39 @@ end
 %       setenv('FINDCALC_LLM_KEY','<your fresh key>')
 %       setenv('FINDCALC_LLM_URL','https://.../v1beta/models/<model>:generateContent')
 % ======================================================================
+function [key, url, model] = aiConfig()
+%AICONFIG  Get the AI key/URL/model from env vars, else the saved config
+%   written by findCalcSetup (userpath/findcalc_ai.mat) - so it persists
+%   across MATLAB sessions and getAIO without re-running setenv.
+    key   = string(getenv('FINDCALC_LLM_KEY'));
+    url   = string(getenv('FINDCALC_LLM_URL'));
+    model = string(getenv('FINDCALC_LLM_MODEL'));
+    if strlength(key) > 0 && strlength(url) > 0, return; end
+    up = userpath;
+    if isempty(up), return; end
+    f = fullfile(up, 'findcalc_ai.mat');
+    if ~isfile(f), return; end
+    try
+        S = load(f);
+        if isfield(S, 'cfg')
+            c = S.cfg;
+            if strlength(key)==0   && isfield(c,'key'),   key   = string(c.key);   end
+            if strlength(url)==0   && isfield(c,'url'),   url   = string(c.url);   end
+            if strlength(model)==0 && isfield(c,'model'), model = string(c.model); end
+        end
+    catch
+    end
+end
+
 function picks = llmSuggestAll(parts, context, idx)
 %LLMSUGGESTALL  ONE request that maps every part to a tool. The model is given
 %   the shared CONTEXT (so a terse part like "TL at 100 Hz" is understood in
 %   the light of the whole question) and the full tool catalogue. Returns a
 %   string per part ("" where not resolved). Fewer requests -> fewer 429s.
     picks = strings(1, numel(parts));
-    key = string(getenv('FINDCALC_LLM_KEY'));
-    url = string(getenv('FINDCALC_LLM_URL'));
+    [key, url, model] = aiConfig();   % env vars, else saved findCalcSetup config
     if strlength(key) == 0 || strlength(url) == 0
-        fprintf('(re-rank skipped: FINDCALC_LLM_KEY / FINDCALC_LLM_URL not set)\n\n');
+        fprintf('(re-rank skipped: run findCalcSetup(''sk-...'') once, or set FINDCALC_LLM_KEY/URL)\n\n');
         return;
     end
     % Catalogue: "ToolName :: keywords" (up to ~24 words) so the model knows
@@ -303,7 +326,6 @@ function picks = llmSuggestAll(parts, context, idx)
         "PARTS:" + newline + partList;
 
     anthropic = contains(lower(url), "anthropic.com");   % provider from the URL
-    model = string(getenv('FINDCALC_LLM_MODEL'));
     try
         if anthropic
             if strlength(model) == 0, model = "claude-haiku-4-5"; end
