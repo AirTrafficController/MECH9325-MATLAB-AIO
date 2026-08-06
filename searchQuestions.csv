@@ -1,0 +1,19 @@
+Question,ExpectedTool
+"A 1000 Hz plane wave at 107 dB re 2e-5 Pa in air is normally incident on an air-water interface. Find the transmitted pressure and particle velocity in the water and the sound transmission coefficient.",Interface impedance
+"A disk of reinforced polyurethane foam is fitted in a tunnel. Find the overall A-weighted sound level before and after the disk is fitted.",Barrier added to spectrum
+"In the engine room of a ship the octave band sound pressure levels were measured. Determine the overall A-weighted sound level LA.",Weighting: overall dB(A)
+"A factory with 9 identical machines gives 52 dB. The maximum permitted is 50 dB at night. How many machines could be used at night?",Max sources under limit
+"A glass skylight panel deflects under a static force. Determine its natural frequency and the sound transmission loss at 100 Hz and 1000 Hz.",Panel TL (resonant)
+"Two identical timber panels are mounted 100 mm apart with a blanket between them. Find the composite barrier transmission loss.",Double-panel TL
+"Two identical timber panels are glued together. Find the mass line transmission loss at several frequencies.",Mass law TL
+"An impulse takes 20 ms to travel 8 m between two probe microphones in a hot pipe. Estimate the air temperature.",Speed of sound (temperature)
+"A plane wave has a peak pressure amplitude of 1.5 Pa at 120 Hz. Find the intensity particle velocity and displacement.",Particle motion
+"An operator wears ear muffs with an SLC80 of 27 dB. Find the protected LAeq over the working day.",Hearing protector (SLC80)
+"A pipe closed at one end is driven at the open end by a piston. Find the first natural frequencies and the acoustic pressure on the piston.",Pipe modes
+"A reverberation test room mean square pressure is measured empty and furnished. Find the T60 and reduction.",Reverberation test room
+"Sound power of a machine from octave band SPLs measured over an enveloping cuboid surface. Find Lw.",Lw from enveloping-surface SPLs
+"A pipe radiates sound into a lake. Find the acoustic power transmitted into the water.",Power into a medium (pipe/interface)
+"Octave band levels over the working day. Find the LAeq equivalent continuous level.",Leq from levels
+"Combine octave band sound pressure levels into an overall total level.",Combine levels
+"Reverberation time from room volume and surface absorption using Sabine.",Sabine T60
+"A limp timber panel of surface mass 19 kg/m2. Find the mass law transmission loss at several frequencies.",Mass law TL
