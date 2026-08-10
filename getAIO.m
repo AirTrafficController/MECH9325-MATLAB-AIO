@@ -32,6 +32,14 @@ unzip(zipfile, aio_dest);
 folder = fullfile(aio_dest, ['MECH9325-MATLAB-AIO-' strrep(aio_branch, '/', '-')]);
 cd(folder);
 
+% Close any app window still open from a previous run FIRST. While an
+% AcousticsApp object exists, MATLAB refuses to reload its class ("Objects of
+% 'AcousticsApp' class exist. Cannot clear this class"), then launches a
+% half-old/half-new definition that errors (e.g. "Unrecognized method
+% 'buildConvert'"). Deleting the figures removes those objects so the reload
+% can happen.
+try, delete(findall(groot, 'Type', 'figure')); catch, end
+
 % Drop MATLAB's in-memory copy of the PREVIOUS version so the freshly
 % downloaded files are actually used - otherwise a cached findCalculator (and
 % its persistent search index) or a cached AcousticsApp class can shadow the
