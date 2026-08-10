@@ -188,12 +188,18 @@ end
 % Scoring
 % ======================================================================
 function sc = scorePart(part, ctxTok, idx)
-%   Part words decide; context adds a faint tie-break nudge only.
+%   Part words decide; the shared context (the question's preamble) is a
+%   tie-break nudge. A single part-word's IDF (~2-4) still outweighs a lot of
+%   context at this weight, so context only tips the balance when the part
+%   itself is generic - e.g. a split part like "(i) the rms sound pressure",
+%   whose tool is only decided by the preamble ("a spherical source radiates
+%   ... into free space"). Too small a weight leaves such parts a coin-flip.
+    CTX_WEIGHT = 0.05;
     stepScore = scoreTokens(tokenize(part), idx);
     if max(stepScore) == 0
         sc = scoreTokens(ctxTok, idx);            % nothing usable in the part
     else
-        sc = stepScore + 1e-3 * scoreTokens(ctxTok, idx);
+        sc = stepScore + CTX_WEIGHT * scoreTokens(ctxTok, idx);
     end
 end
 
