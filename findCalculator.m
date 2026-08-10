@@ -417,6 +417,17 @@ function [parts, pre] = splitParts(q)
     qc = char(q(1));
     pat = '\((?:[ivxlcdm]{1,4}|[a-zA-Z]|\d{1,2})\)';    % (i) (ii) (a) (1)
     ix = regexp(qc, pat, 'start');
+    % A real part marker sits at a word boundary (start of string or after
+    % whitespace). Drop matches glued to the previous character, e.g. the
+    % "(A)" inside "dB(A)" - that is a weighting label, not a sub-question,
+    % and splitting there would strip the front of the question into context.
+    if ~isempty(ix)
+        keep = false(1, numel(ix));
+        for k = 1:numel(ix)
+            keep(k) = ix(k) == 1 || isspace(qc(ix(k)-1));
+        end
+        ix = ix(keep);
+    end
     if ~isempty(ix)
         if ix(1) == 1, pre = ""; else, pre = string(strtrim(qc(1:ix(1)-1))); end
         bounds = [ix, numel(qc)+1];
