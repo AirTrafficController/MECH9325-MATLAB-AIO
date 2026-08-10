@@ -5,7 +5,7 @@ Sound intensity level LI,sound intensity level li watt per square metre pressure
 Radiated power (point source),radiated power point source spherical sphere hemisphere free field free space watt radiates single frequency at distance directivity q rms sound pressure sound pressure level sound intensity sound intensity level li spl lw density speed of sound air medium two frequencies total
 Duct band power (pipe),duct pipe plane wave octave band spl intensity power cross section area total lw speaker reflected
 Peak <-> RMS & combine tones,peak rms amplitude combine tones quadrature pressures total pressure
-PSD -> RMS pressure,power spectral density psd integrate band mean square pressure spectrum
+PSD -> RMS pressure,power spectral density psd pa2 pahz varies varying linearly linear ramp slope trapezoid trapezium area under curve integrate integral band bandwidth frequency limits between lower upper mean square root rms value sound pressure spectrum level
 Combine levels,combine add sound levels total energy sum sources decibel lp overall octave band linear unweighted
 N identical sources,identical sources number combine total same
 Increase from more sources,increase added sources level rise more
