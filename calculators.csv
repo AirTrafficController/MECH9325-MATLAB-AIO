@@ -45,7 +45,7 @@ Sone -> phon,loudness sone phon convert
 Speech interference level SIL,speech interference level sil octave bands mean
 Voice level VL_A,voice level a-weighted communication distance speech effort shouting sil possible
 Day-night level Ldn,day night level community day night penalty ldn
-SEL <-> Leq,sound exposure level sel leq event duration single transient second reference measurement
+SEL <-> Leq,sound exposure level sel leq event duration single transient time seconds second reference measurement
 Mass law TL,mass law transmission loss surface mass frequency panel density thickness normal incidence timber glued laminated layers two identical bonded masses add composite single leaf
 Double-panel TL,double panel two leaves timber panels in series composite barrier transmission coefficient product alpha1 alpha2 tl1 tl2 sum add apart separated cavity blanket standing waves mass line sound insulation
 Panel TL (resonant),panel transmission loss resonant mass stiffness natural frequency deflection force glass skylight damping single sound transmission loss at frequency hz below above resonance stiffness-controlled mass-controlled region rectangular
