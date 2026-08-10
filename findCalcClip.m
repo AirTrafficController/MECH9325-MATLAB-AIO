@@ -47,21 +47,27 @@ end
 
 function parts = cleanClip(raw)
 %CLEANCLIP  Turn pasted text into the list of real sub-questions to search.
-%   Keeps only lines that look like a question (start with a command/question
-%   word or end with "?"); drops the scenario, tables, number/unit-only rows,
-%   empty answer fields and marks/feedback. Falls back to the whole cleaned
-%   blob (for FINDCALCULATOR's own "(i)(ii)" splitting) if no question line is
-%   found.
+%   Drops noise (scenario tables, number/unit-only rows, empty answer fields
+%   like "RMS voltage =" or a lone "Volts", and marks/feedback). Then:
+%    * if any line starts with a command/question word (Determine, Find, ...)
+%      or ends with "?", those lines ARE the sub-questions (multi-part case);
+%    * otherwise the whole thing is ONE question - the kept lines are joined
+%      with spaces into a single query, so a one-paragraph question stays one
+%      part instead of splitting on its line breaks.
     parts = strings(1, 0);
     if isempty(raw), return; end
     lines = splitlines(string(raw));
     drop  = ["marks for this submission", "correct answer", "well done", "incorrect"];
+    units = ["v","volt","volts","db","dba","dbc","pa","upa","hz","khz","w","mw", ...
+             "watt","watts","sec","second","seconds","mm","mv"];
     kept  = strings(0, 1);
     for i = 1:numel(lines)
         L = strtrim(lines(i));
         if strlength(L) == 0,                          continue; end   % blank
         if any(contains(lower(L), drop)),              continue; end   % feedback
-        if isempty(regexp(L, '[A-Za-z]{3,}', 'once')), continue; end   % numbers/ranges/units
+        if isempty(regexp(L, '[A-Za-z]{3,}', 'once')), continue; end   % numbers/ranges/short
+        if endsWith(L, "="),                           continue; end   % empty answer field "X ="
+        if any(lower(regexprep(L,'[^A-Za-z]','')) == units), continue; end % lone unit line "Volts"
         kept(end+1, 1) = L; %#ok<AGROW>
     end
     if isempty(kept), return; end
@@ -78,8 +84,8 @@ function parts = cleanClip(raw)
         isQ(i) = any(w1 == qWords) || endsWith(kept(i), '?');
     end
     if any(isQ)
-        parts = reshape(kept(isQ), 1, []);             % the sub-questions only
+        parts = reshape(kept(isQ), 1, []);             % multi-part: the sub-question lines
     else
-        parts = strtrim(strjoin(kept, newline));       % fallback: let findCalculator split
+        parts = strtrim(strjoin(kept, " "));           % single question: one query (no line-split)
     end
 end
