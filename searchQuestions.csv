@@ -18,3 +18,4 @@ Question,ExpectedTool
 "Reverberation time from room volume and surface absorption using Sabine.",Sabine T60
 "A limp timber panel of surface mass 19 kg/m2. Find the mass law transmission loss at several frequencies.",Mass law TL
 "A small spherical source radiates 1.04 watt into free space at 1000 Hz. At 0.17 m find (i) the rms sound pressure (ii) sound pressure level (iii) sound intensity (iv) sound intensity level. Air density 1.21 and speed of sound 343.",Radiated power (point source)
+"A sound level meter on the linear scale gives dB readings over four successive time periods in seconds for a source totally in the 1000 Hz octave band. Determine Leq,100s.",Leq from levels
