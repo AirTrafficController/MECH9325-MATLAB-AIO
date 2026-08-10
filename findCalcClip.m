@@ -66,11 +66,16 @@ function parts = cleanClip(raw)
     end
     if isempty(kept), return; end
 
-    qStart = ['^\s*(determine|find|calculate|compute|estimate|evaluate|obtain|' ...
-              'show|state|explain|what|which|how|why)\b'];
+    % A line is a sub-question if its FIRST word is a command/question word,
+    % or it ends with "?". First-word matching (rather than a regex) is used
+    % because it is unambiguous and robust across MATLAB versions.
+    qWords = ["determine","find","calculate","compute","estimate","evaluate", ...
+              "obtain","show","state","explain","what","which","how","why","hence"];
     isQ = false(numel(kept), 1);
     for i = 1:numel(kept)
-        isQ(i) = ~isempty(regexp(lower(kept(i)), qStart, 'once')) || endsWith(kept(i), '?');
+        w1 = extractBefore(kept(i) + " ", " ");        % first token (+" " guards 1-word lines)
+        w1 = lower(regexprep(w1, '[^A-Za-z]', ''));    % letters only: "(i)" -> "i", "Determine," -> determine
+        isQ(i) = any(w1 == qWords) || endsWith(kept(i), '?');
     end
     if any(isQ)
         parts = reshape(kept(isQ), 1, []);             % the sub-questions only
