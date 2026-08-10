@@ -447,7 +447,10 @@ function t = tokenize(str)
     if ~isscalar(str) || ismissing(str) || strlength(str) == 0
         t = strings(1,0); return;
     end
-    t = split(lower(strtrim(str)));
+    % Split on commas as well as whitespace so exam notation like "Leq,100s"
+    % or "Leq,8h" yields the decisive acronym "leq" instead of the merged
+    % junk token "leq100s" (comma-erasure used to glue the number on).
+    t = split(replace(lower(strtrim(str)), ",", " "));
     t = erase(t, [",", ".", ";", ":", "?", "!", "(", ")", "-", "/", "=", ...
                   "’", "‘", char(8220), char(8221), """"]);
     t = t(strlength(t) >= 2);               % keep acronyms (lp, la, tl, nr)
