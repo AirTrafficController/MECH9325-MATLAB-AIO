@@ -92,7 +92,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Levels: Sound power level Lw','lw sound power watt level reference convert', @app.buildLwConv};
             c(end+1,:) = {'Levels: Sound intensity level LI','li intensity i=p2/rhoc pressure level reference convert', @app.buildLI};
             c(end+1,:) = {'Levels: Peak <-> RMS & combine tones','peak rms amplitude p/sqrt2 combine quadrature pressures tones total', @app.buildRMS};
-            c(end+1,:) = {'Levels: PSD -> RMS pressure','psd power spectral density pa2/hz integrate band trapezoid mean square spectrum', @app.buildPSD};
+            c(end+1,:) = {'Levels: PSD -> RMS pressure','psd power spectral density pa2/hz varies varying linearly linear ramp slope trapezoid trapezium area under curve integrate band bandwidth frequency limits between lower upper mean square root rms value sound pressure spectrum level', @app.buildPSD};
             c(end+1,:) = {'Levels: Radiated power (point source)','radiated power intensity pressure w=i*s 4 pi r2 q directivity free field hemisphere point source lw', @app.buildRadiated};
             c(end+1,:) = {'Levels: Power into a medium (pipe/interface)','power into medium water pipe interface immersed anechoic spl pressure intensity second medium lake impedance rhoc', @app.buildPowerMedium};
 
