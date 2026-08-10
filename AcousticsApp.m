@@ -130,7 +130,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Power: Lw from enveloping-surface SPLs','sound power level lw enveloping surface cuboid box partial areas faces machine engine measured spl sum si', @app.buildLwSurfaces};
             c(end+1,:) = {'Power: Lw from free-field band SPLs','sound power lw free field band spl unweight a-weighted hemisphere sphere drill', @app.buildPowerBands};
 
-            c(end+1,:) = {'Duct: sound power -> mic voltage','duct pipe microphone voltage sensitivity plane wave intensity rms cut-on', @app.buildDuct};
+            c(end+1,:) = {'Duct: sound power -> mic voltage','duct pipe microphone mic voltage volt sensitivity flush plane wave progressive intensity rms cut-on cuton diameter along contains radiates generated sensed anechoic reflected watts acoustic power lw', @app.buildDuct};
             c(end+1,:) = {'Duct: octave-band Lp -> I, W, totals (pipe)','duct pipe speaker plane wave octave band spl lp rms pressure intensity power radiated cross section area total lw', @app.buildDuctPower};
 
             c(end+1,:) = {'A / B / C Weighting & overall level','weighting a b c dba dbc octave third overall spectrum network', @app.buildWeighting};
