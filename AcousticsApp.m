@@ -1211,13 +1211,17 @@ classdef AcousticsApp < handle
         % ================= LEQ =================
         function buildLeq(app)
             gl = uigridlayout(app.Content,[6 2]);
-            gl.RowHeight = {20,'1x',32,32,32,120}; gl.ColumnWidth = {180,'1x'};
-            l = uilabel(gl,'Text','Level dB(A) and Duration per row (units allowed, e.g. 15 min, 2 h):');
+            gl.RowHeight = {40,'1x',32,32,32,140}; gl.ColumnWidth = {180,'1x'};
+            l = uilabel(gl,'WordWrap','on','Text', ...
+                ['Level dB(A), Duration, and optional Source per row (units e.g. 15 min, 2 h). ' ...
+                 'Tag rows with a Source (e.g. Loco A / B / C) to get each source''s own Leq as ' ...
+                 'well as the combined LAeq over all rows.']);
             l.Layout.Row = 1; l.Layout.Column = [1 2];
-            app.W.tbl = uitable(gl,'ColumnName',{'Level dB(A)','Duration'}, ...
-                'ColumnEditable',[true true], 'Data',{96,'15 min';91,'2 h';99,'6 min';86,'2.5 h'});
+            app.W.tbl = uitable(gl,'ColumnName',{'Level dB(A)','Duration','Source'}, ...
+                'ColumnEditable',[true true true], ...
+                'Data',{80,'0.25 h','Loco A';85,'0.267 h','Loco A';75,'0.183 h','Loco B';80.8,'0.183 h','Loco B'});
             app.W.tbl.Layout.Row = 2; app.W.tbl.Layout.Column = [1 2];
-            addb = uibutton(gl,'Text','+ Add row','ButtonPushedFcn',@(o,e) app.addRow(app.W.tbl,{[],''}));
+            addb = uibutton(gl,'Text','+ Add row','ButtonPushedFcn',@(o,e) app.addRow(app.W.tbl,{[],'',''}));
             addb.Layout.Row = 3; addb.Layout.Column = 1;
             b = uibutton(gl,'Text','Compute Leq','ButtonPushedFcn',@(o,e) app.runLeq());
             b.Layout.Row = 3; b.Layout.Column = 2;
@@ -1228,14 +1232,28 @@ classdef AcousticsApp < handle
         end
         function runLeq(app)
             def = app.unitChar(app.W.unit.Value);
-            [L,t] = app.readLevelTime(app.W.tbl, def);
+            [L,t,g] = app.readLevelTimeGroup(app.W.tbl, def);
             if isempty(L), app.W.out.Value = {'Enter level, duration rows (e.g. 96, 15 min).'}; return; end
             T = app.parseTime(app.W.T.Value, def);
             R = acoustics.leqFromLevels(L, t, 'T', T);
-            app.W.out.Value = [{ ...
-                sprintf('Leq = %.3f dB   (sum t = %s, T = %s)', R.Leq, ...
+            lines = { ...
+                sprintf('OVERALL  LAeq = %.3f dB   (sum t = %s, T = %s)', R.Leq, ...
                     app.fmtSeconds(R.sumT), app.fmtSeconds(R.T)), ...
-                sprintf('SEL (L_AE, over 1 s) = %.2f dB', R.SEL), '', 'WORKING' }, R.steps];
+                sprintf('         SEL (L_AE, over 1 s) = %.2f dB', R.SEL) };
+            grp = unique(g(strlength(g) > 0), 'stable');   % distinct sources, in first-seen order
+            if numel(grp) >= 2
+                lines{end+1} = '';
+                lines{end+1} = 'PER SOURCE  (LAeq over that source''s own total time):';
+                for k = 1:numel(grp)
+                    m  = (g == grp(k));
+                    Rk = acoustics.leqFromLevels(L(m), t(m));
+                    lines{end+1} = sprintf('   %-10s LAeq = %.3f dB   (sum t = %s)', ...
+                        char(grp(k)), Rk.Leq, app.fmtSeconds(Rk.sumT)); %#ok<AGROW>
+                end
+            end
+            lines{end+1} = '';
+            lines{end+1} = 'WORKING (combined)';
+            app.W.out.Value = [lines, R.steps];
         end
 
         function buildEvents(app)
@@ -1738,6 +1756,24 @@ classdef AcousticsApp < handle
                 sec=app.parseTime(d{i,2}, defUnit);
                 if isnan(sec), continue; end
                 L(end+1)=a; t(end+1)=sec; %#ok<AGROW>
+            end
+        end
+        function [L,t,g] = readLevelTimeGroup(app, tbl, defUnit)
+            % Like readLevelTime, but also returns a Source label per row (from
+            % an optional 3rd column) so runLeq can break Leq down per source.
+            d=tbl.Data; L=[]; t=[]; g=strings(1,0);
+            for i=1:size(d,1)
+                a=d{i,1};
+                if isempty(a)||(isnumeric(a)&&isnan(a)), continue; end
+                sec=app.parseTime(d{i,2}, defUnit);
+                if isnan(sec), continue; end
+                lbl="";
+                if size(d,2)>=3
+                    c=d{i,3};
+                    if ischar(c)||isstring(c), lbl=strtrim(string(c));
+                    elseif isnumeric(c)&&~isnan(c), lbl=string(c); end
+                end
+                L(end+1)=a; t(end+1)=sec; g(end+1)=lbl; %#ok<AGROW>
             end
         end
         function sec = parseTime(~, val, defUnit)
