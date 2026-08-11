@@ -46,31 +46,46 @@ function out = findCalcClip(varargin)
 end
 
 function parts = cleanClip(raw)
-%CLEANCLIP  Turn pasted text into the list of real sub-questions to search.
-%   Drops noise (scenario tables, number/unit-only rows, empty answer fields
-%   like "RMS voltage =" or a lone "Volts", and marks/feedback). Then:
-%    * if any line starts with a command/question word (Determine, Find, ...)
-%      or ends with "?", those lines ARE the sub-questions (multi-part case);
-%    * otherwise the whole thing is ONE question - the kept lines are joined
-%      with spaces into a single query, so a one-paragraph question stays one
-%      part instead of splitting on its line breaks.
+%CLEANCLIP  Turn pasted text into the query/queries to search.
+%   Drops noise (tables, number/unit-only rows, marks/feedback) and strips a
+%   trailing answer field ("= 80.074 dB(A)" or a bare "=") off each line so a
+%   sub-question phrased as "(i) LAeq for the ten second period =" survives.
+%   Then routes three ways:
+%    * markers present: any line starts with "(i)/(ii)/(a)/(1)"  -> hand the
+%      whole cleaned blob to FINDCALCULATOR, which splits on the markers with
+%      the preamble as shared context;
+%    * else, lines starting with a command/question word (Determine, Find,
+%      ... What, Which) or ending "?" ARE the sub-questions (one part each);
+%    * else, one paragraph -> join with spaces into a single query.
     parts = strings(1, 0);
     if isempty(raw), return; end
     lines = splitlines(string(raw));
     drop  = ["marks for this submission", "correct answer", "well done", "incorrect"];
     units = ["v","volt","volts","db","dba","dbc","pa","upa","hz","khz","w","mw", ...
              "watt","watts","sec","second","seconds","mm","mv"];
-    kept  = strings(0, 1);
+    markerPat = '^\((?:[ivxlcdm]{1,4}|[a-zA-Z]|\d{1,2})\)';   % "(i)" "(ii)" "(a)" "(1)" at line start
+    kept = strings(0, 1);
+    hasMarker = false;
     for i = 1:numel(lines)
         L = strtrim(lines(i));
-        if strlength(L) == 0,                          continue; end   % blank
-        if any(contains(lower(L), drop)),              continue; end   % feedback
+        if strlength(L) == 0,             continue; end        % blank
+        if any(contains(lower(L), drop)), continue; end        % feedback
+        isMarker = ~isempty(regexp(L, markerPat, 'once'));
+        L = strtrim(regexprep(L, '=\s*[-0-9.eE]*\s*[A-Za-z()/%]*\s*$', ''));  % strip "= 80.074 dB(A)"
+        if strlength(L) == 0,                          continue; end   % was only an answer field
         if isempty(regexp(L, '[A-Za-z]{3,}', 'once')), continue; end   % numbers/ranges/short
-        if endsWith(L, "="),                           continue; end   % empty answer field "X ="
         if any(lower(regexprep(L,'[^A-Za-z]','')) == units), continue; end % lone unit line "Volts"
         kept(end+1, 1) = L; %#ok<AGROW>
+        hasMarker = hasMarker || isMarker;
     end
     if isempty(kept), return; end
+
+    % Marker questions: let FINDCALCULATOR do the "(i)(ii)" split (preamble ->
+    % context), which handles terse marked sub-parts better than line pieces.
+    if hasMarker
+        parts = strtrim(strjoin(kept, newline));
+        return;
+    end
 
     % A line is a sub-question if its FIRST word is a command/question word,
     % or it ends with "?". First-word matching (rather than a regex) is used
@@ -80,7 +95,7 @@ function parts = cleanClip(raw)
     isQ = false(numel(kept), 1);
     for i = 1:numel(kept)
         w1 = extractBefore(kept(i) + " ", " ");        % first token (+" " guards 1-word lines)
-        w1 = lower(regexprep(w1, '[^A-Za-z]', ''));    % letters only: "(i)" -> "i", "Determine," -> determine
+        w1 = lower(regexprep(w1, '[^A-Za-z]', ''));    % letters only: "Determine," -> determine
         isQ(i) = any(w1 == qWords) || endsWith(kept(i), '?');
     end
     if any(isQ)
