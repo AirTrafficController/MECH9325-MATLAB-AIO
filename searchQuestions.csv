@@ -29,3 +29,4 @@ Question,ExpectedTool
 "Calculate the equivalent A-weighted continuous SPL LAeq,T over the total time from a set of LAeq,Ti values and their time intervals for a locomotive operator, and an equivalent 8 hour exposure LAeq,8h.",Leq from levels
 "From a noise event level versus time graph, determine the LAeq equivalent continuous level over the ten second period and the LAE sound exposure level for each five second interval.",Leq from levels
 "At a point midway between two fans in a bakery, the sound pressure level when both fans are on is 82 dB. What will be the sound pressure level when only one fan is running?",One of N sources
+"Octave band A-weighted SPLs of an electric drill were measured at 10 locations on a 0.86 m diameter hemisphere on the ground in a free field. Determine the total unweighted sound power level Lw of the drill.",Lw from bands (free field)
