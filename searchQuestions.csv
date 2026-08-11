@@ -31,3 +31,4 @@ Question,ExpectedTool
 "At a point midway between two fans in a bakery, the sound pressure level when both fans are on is 82 dB. What will be the sound pressure level when only one fan is running?",One of N sources
 "Octave band A-weighted SPLs of an electric drill were measured at 10 locations on a 0.86 m diameter hemisphere on the ground in a free field. Determine the total unweighted sound power level Lw of the drill.",Lw from bands (free field)
 "Predict the increase in the overall A-weighted reverberant sound pressure level in an office when six suspended acoustic absorbing panels are removed, given the room reverberation times and the panel absorption coefficients.",Absorber change
+"For a noise event whose level is described by a ramp function LA=10log10(9t+1)+80 over the first minute then constant at 80, calculate the LAeq and the LA10 percentile over the five minute period.",Leq time-varying & LN
