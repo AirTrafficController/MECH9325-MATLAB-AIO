@@ -31,7 +31,7 @@ Reverberation test room,reverberation test room t60 mean square pressure furnitu
 Background K1,background correction k1 source measurement mean spl
 Environmental K2,environmental correction k2 room surface absorption area
 Sound power from surface SPL,sound power from surface spl measurement k1 k2 area lw
-Lw from bands (free field),sound power free field bands surface intensity octave lw
+Lw from bands (free field),sound power free field bands surface intensity octave lw hemisphere hemispherical ground reflecting plane locations positions microphone points mean measured drill machine unweighted total radius diameter around remove weighting a-weighted dba
 Duct -> mic voltage,duct pipe microphone mic voltage volt vpa sensitivity flush plane wave progressive rms cut-on cuton diameter along contains contained radiates generated generate sensed anechoic reflected watts
 Weighting: overall dB(A),a weighting b c z overall octave band dba spectrum level network total la a-weighted weighted
 Band workbench (1/3 -> octave),third octave combine bands overall weighted spl
