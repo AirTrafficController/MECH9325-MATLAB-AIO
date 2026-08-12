@@ -1,50 +1,62 @@
 function R = radiatedPower(r, opts)
-%RADIATEDPOWER  Sound power radiated by a point source (from I or pressure).
-%   R = ACOUSTICS.RADIATEDPOWER(r, 'I', value) integrates a measured
-%   intensity over the radiating surface at distance r (m):
-%       S = 4*pi*r^2 / Q,   W = I * S
-%   with directivity Q (1 free field / 2 hemisphere / 4 edge / 8 corner).
+%RADIATEDPOWER  Point-source radiation relations at a distance (both ways).
+%   Give exactly ONE of the source quantities and get the full set at
+%   distance r (m) for directivity Q (1 free field / 2 hemisphere / 4 edge /
+%   8 corner):
+%       R = ACOUSTICS.RADIATEDPOWER(r, 'W', value)  % sound POWER (W)  -> p,SPL,I,SIL
+%       R = ACOUSTICS.RADIATEDPOWER(r, 'I', value)  % intensity (W/m^2)
+%       R = ACOUSTICS.RADIATEDPOWER(r, 'P', value)  % PEAK pressure (Pa)
 %
-%   R = ACOUSTICS.RADIATEDPOWER(r, 'P', value) instead takes a PEAK pressure
-%   amplitude P (Pa) and first forms the intensity:
-%       p_rms = P / sqrt(2),   I = p_rms^2 / (rho c)
-%   with rho c = 415 rayls by default ('rhoc' overrides).
+%   Relations (rho c = 415 rayls by default, 'rhoc' overrides):
+%       S = 4*pi*r^2 / Q        (radiating area)
+%       from P:  p_rms = P/sqrt(2),  I = p_rms^2/(rho c)
+%       from W:  I = W / S
+%       p_rms = sqrt(I*rho c),  W = I*S
+%       SPL = 20*log10(p_rms/2e-5),  SIL = 10*log10(I/1e-12),  Lw = 10*log10(W/1e-12)
 %
-%   Supply exactly one of I or P. R has fields .I (W/m^2), .area (m^2),
-%   .W (W), .Lw (dB re 1e-12 W) and .steps.
+%   R has fields .I, .prms, .spl, .sil, .area, .W, .Lw and .steps.
 %
+%   Example (W = 1.04 W, r = 0.17 m, Q = 1):
+%       R = acoustics.radiatedPower(0.17,'W',1.04);
+%       R.prms  % 34.47 Pa      R.spl % 124.73 dB
+%       R.I     % 2.864 W/m^2   R.sil % 124.57 dB
 %   Example (P = 25 Pa, r = 2 m, Q = 1):
-%       R = acoustics.radiatedPower(2, 'P', 25);
-%       R.I    % 0.753 W/m^2
-%       R.W    % 37.85 W
+%       R = acoustics.radiatedPower(2,'P',25);  R.I % 0.753   R.W % 37.85
     arguments
         r (1,1) double {mustBePositive}
+        opts.W    double = NaN
         opts.I    double = NaN
         opts.P    double = NaN
         opts.Q    (1,1) double {mustBePositive} = 1
         opts.rhoc (1,1) double {mustBePositive} = 415
     end
     C = acoustics.constants();
-    hasI = ~isnan(opts.I);
-    hasP = ~isnan(opts.P);
-    if hasI == hasP
-        error('acoustics:radiatedPower:input', 'Supply exactly one of I or P.');
+    given = [~isnan(opts.W), ~isnan(opts.I), ~isnan(opts.P)];
+    if sum(given) ~= 1
+        error('acoustics:radiatedPower:input', 'Supply exactly one of W, I or P.');
     end
-    steps = {};
-    if hasP
+    R.area = 4*pi*r^2/opts.Q;
+    steps = { sprintf('S = 4*pi*r^2/Q = 4*pi*%g^2/%g = %.4g m^2', r, opts.Q, R.area) };
+    if ~isnan(opts.P)
         prms = opts.P/sqrt(2);
-        R.I = prms^2/opts.rhoc;
-        steps = { ...
+        R.I  = prms^2/opts.rhoc;
+        steps = [{ ...
             sprintf('p_rms = P/sqrt(2) = %g/sqrt(2) = %.4g Pa', opts.P, prms), ...
-            sprintf('I = p_rms^2/(rho c) = %.4g^2/%g = %.4g W/m^2', prms, opts.rhoc, R.I)};
+            sprintf('I = p_rms^2/(rho c) = %.4g^2/%g = %.4g W/m^2', prms, opts.rhoc, R.I)}, steps];
+    elseif ~isnan(opts.W)
+        R.I = opts.W/R.area;
+        steps{end+1} = sprintf('I = W/S = %g/%.4g = %.4g W/m^2', opts.W, R.area, R.I);
     else
         R.I = opts.I;
     end
-    R.area = 4*pi*r^2/opts.Q;
-    R.W = R.I*R.area;
-    R.Lw = 10*log10(R.W/C.WREF);
+    R.prms = sqrt(R.I*opts.rhoc);
+    R.W    = R.I*R.area;
+    R.spl  = 20*log10(R.prms/C.PREF);
+    R.sil  = 10*log10(R.I/C.IREF);
+    R.Lw   = 10*log10(R.W/C.WREF);
     R.steps = [steps, { ...
-        sprintf('S = 4*pi*r^2/Q = 4*pi*%g^2/%g = %.4g m^2', r, opts.Q, R.area), ...
-        sprintf('W = I*S = %.4g W', R.W), ...
-        sprintf('Lw = 10*log10(W/1e-12) = %.2f dB', R.Lw)}];
+        sprintf('p_rms = sqrt(I*rho c) = sqrt(%.4g*%g) = %.4g Pa', R.I, opts.rhoc, R.prms), ...
+        sprintf('SPL = 20*log10(p_rms/2e-5) = %.2f dB', R.spl), ...
+        sprintf('I   = %.4g W/m^2   SIL = 10*log10(I/1e-12) = %.2f dB', R.I, R.sil), ...
+        sprintf('W = I*S = %.4g W   Lw = 10*log10(W/1e-12) = %.2f dB', R.W, R.Lw)}];
 end

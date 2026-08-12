@@ -392,12 +392,12 @@ classdef AcousticsApp < handle
         function buildRadiated(app)
             gl = app.form(7);
             app.W.src = app.ddField(gl,1,'Input', ...
-                {'Peak pressure P (Pa)','Intensity I (W/m^2)'});
-            app.W.val = app.numField(gl,2,'Value (P in Pa, or I in W/m^2)',25);
-            app.W.r   = app.numField(gl,3,'Distance r (m)',2);
+                {'Sound power W (W)','Peak pressure P (Pa)','Intensity I (W/m^2)'});
+            app.W.val = app.numField(gl,2,'Value (W in W, P in Pa, or I in W/m^2)',1.04);
+            app.W.r   = app.numField(gl,3,'Distance r (m)',0.17);
             app.W.Q   = app.ddField(gl,4,'Directivity Q', ...
                 {'1 - free field','2 - hemisphere','4 - edge','8 - corner'});
-            app.note(gl,5,'S = 4*pi*r^2/Q · from P: p_rms=P/sqrt2, I=p_rms^2/rhoc · W = I*S · Lw = 10*log10(W/1e-12)');
+            app.note(gl,5,'S = 4*pi*r^2/Q · from W: I=W/S · p_rms=sqrt(I*rhoc) · SPL, SIL, Lw from refs');
             app.goButton(gl,6,@(o,e) app.runRadiated());
             app.W.out = app.resultBox(gl,7);
         end
@@ -405,13 +405,17 @@ classdef AcousticsApp < handle
             r=app.W.r.Value; Q=str2double(app.W.Q.Value(1)); v=app.W.val.Value;
             if ~(r>0), app.W.out.Value = {'Distance r must be > 0.'}; return; end
             if ~(v>0), app.W.out.Value = {'Input value must be > 0.'}; return; end
-            if startsWith(app.W.src.Value,'Peak')
+            if startsWith(app.W.src.Value,'Sound power')
+                R = acoustics.radiatedPower(r,'W',v,'Q',Q);
+            elseif startsWith(app.W.src.Value,'Peak')
                 R = acoustics.radiatedPower(r,'P',v,'Q',Q);
             else
                 R = acoustics.radiatedPower(r,'I',v,'Q',Q);
             end
-            app.W.out.Value = [{ sprintf('I = %.4g W/m^2 · W = %.4g W · Lw = %.2f dB', ...
-                R.I, R.W, R.Lw), '', 'WORKING' }, R.steps];
+            app.W.out.Value = [{ ...
+                sprintf('p_rms = %.4g Pa · SPL = %.2f dB', R.prms, R.spl), ...
+                sprintf('I = %.4g W/m^2 · SIL = %.2f dB', R.I, R.sil), ...
+                sprintf('W = %.4g W · Lw = %.2f dB', R.W, R.Lw), '', 'WORKING' }, R.steps];
         end
 
         function buildPowerMedium(app)

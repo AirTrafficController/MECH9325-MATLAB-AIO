@@ -250,6 +250,16 @@ function testRadiatedPowerFromPressure(t)
     verifyEqual(t, R.W, 37.85, 'AbsTol', 0.02);
 end
 
+function testRadiatedPowerFromPower(t)
+    % W = 1.04 W at r = 0.17 m, Q = 1 -> I = 2.864, p_rms = 34.47 Pa,
+    % SPL = 124.73 dB, SIL = 124.57 dB (rho c = 415)
+    R = acoustics.radiatedPower(0.17, 'W', 1.04, 'Q', 1);
+    verifyEqual(t, R.I,    2.864, 'AbsTol', 0.01);
+    verifyEqual(t, R.prms, 34.47, 'AbsTol', 0.05);
+    verifyEqual(t, R.spl,  124.73, 'AbsTol', 0.1);
+    verifyEqual(t, R.sil,  124.57, 'AbsTol', 0.1);
+end
+
 function testUnitConvert(t)
     verifyEqual(t, acoustics.convertUnit(2e-5,'Pa','uPa').value, 20, 'AbsTol', 1e-9);
     verifyEqual(t, acoustics.convertUnit(1e-12,'W','pW').value, 1, 'AbsTol', 1e-12);
