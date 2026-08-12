@@ -63,7 +63,7 @@ function parts = cleanClip(raw)
     drop  = ["marks for this submission", "correct answer", "well done", "incorrect"];
     units = ["v","volt","volts","db","dba","dbc","pa","upa","hz","khz","w","mw", ...
              "watt","watts","sec","second","seconds","mm","mv"];
-    markerPat = '^\((?:[ivxlcdm]{1,4}|[a-zA-Z]|\d{1,2})\)';   % "(i)" "(ii)" "(a)" "(1)" at line start
+    markerPat = '^\(?(?:[ivxlcdm]{1,4}|[a-zA-Z]|\d{1,2})\)';  % "(i)" or "i)" / "a)" / "1)" at line start
     kept = strings(0, 1);
     hasMarker = false;
     for i = 1:numel(lines)

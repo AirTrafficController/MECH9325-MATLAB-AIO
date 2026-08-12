@@ -421,7 +421,7 @@ function [parts, pre] = splitParts(q)
 %   markers (else on newlines / semicolons). Text before the first marker is
 %   returned as PRE (shared context).
     qc = char(q(1));
-    pat = '\((?:[ivxlcdm]{1,4}|[a-zA-Z]|\d{1,2})\)';    % (i) (ii) (a) (1)
+    pat = '\(?(?:[ivxlcdm]{1,4}|[a-zA-Z]|\d{1,2})\)';   % (i) (ii) (a) (1)  or  i) a) 1)
     ix = regexp(qc, pat, 'start');
     % A real part marker sits at a word boundary (start of string or after
     % whitespace). Drop matches glued to the previous character, e.g. the
