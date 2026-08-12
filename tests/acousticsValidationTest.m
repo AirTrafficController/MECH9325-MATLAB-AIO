@@ -250,6 +250,19 @@ function testRadiatedPowerFromPressure(t)
     verifyEqual(t, R.W, 37.85, 'AbsTol', 0.02);
 end
 
+function testHearingProtectorBands(t)
+    % NAL EML-45 muffs, mean-1SD ("maximum") -> LA = 93.0 dB(A)
+    f  = [125 250 500 1000 2000 4000 8000];
+    Lp = [102 103 104 95 91 98 98];
+    m  = [5.3 8.5 15.9 26.0 25.4 35.7 27.2];
+    s  = [4.6 2.4 4.6 4.3 5.5 4.1 5.5];
+    R = acoustics.hearingProtectorBands(f, Lp, m, s, 'k', 1);
+    verifyEqual(t, R.LA, 93.0, 'AbsTol', 0.1);
+    % mean only (k=0) is lower; mean-2SD (k=2) is higher
+    verifyLessThan(t, acoustics.hearingProtectorBands(f,Lp,m,s,'k',0).LA, R.LA);
+    verifyGreaterThan(t, acoustics.hearingProtectorBands(f,Lp,m,s,'k',2).LA, R.LA);
+end
+
 function testRadiatedPowerFromPower(t)
     % W = 1.04 W at r = 0.17 m, Q = 1 -> I = 2.864, p_rms = 34.47 Pa,
     % SPL = 124.73 dB, SIL = 124.57 dB (rho c = 415)

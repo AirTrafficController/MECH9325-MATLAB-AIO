@@ -143,6 +143,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Noise Dose & max time','noise dose ohs 85 db exchange permissible time worker shift criterion', @app.buildDose};
             c(end+1,:) = {'Max permissible time (steady level)','max permissible time steady level exchange rate criterion ohs', @app.buildMaxTime};
             c(end+1,:) = {'Hearing protector (SLC80)','hearing protector ear muff plug slc80 protected laeq lceq c-weighted attenuation reduction wear as nzs 1269', @app.buildHearProt};
+            c(end+1,:) = {'Hearing protector (octave-band mean/SD)','hearing protector ear muff octave band mean standard deviation attenuation maximum a-weighted level at ears wearing correctly adjusted worst case nal', @app.buildHearProtBands};
 
             c(end+1,:) = {'Loudness: phons -> sones','loudness phon sone equal loudness contour convert subjective', @app.buildPh2S};
             c(end+1,:) = {'Loudness: sones -> phons','loudness sone phon convert log2', @app.buildS2Ph};
@@ -1423,6 +1424,46 @@ classdef AcousticsApp < handle
             R = acoustics.hearingProtector(app.W.LCeq.Value, app.W.SLC80.Value);
             app.W.out.Value = [{ sprintf('Protected LAeq = %.2f dB(A)', R.protectedLAeq), ...
                 '', 'WORKING' }, R.steps];
+        end
+
+        function buildHearProtBands(app)
+            gl = uigridlayout(app.Content,[6 2]);
+            gl.RowHeight = {40,'1x',32,32,32,140}; gl.ColumnWidth = {200,'1x'};
+            l = uilabel(gl,'WordWrap','on','Text', ...
+                ['Per octave band: centre frequency, band SPL, mean attenuation, SD of attenuation. ' ...
+                 'Assumed attenuation = mean - k*SD (k=1 gives the worst-case "maximum" ear level).']);
+            l.Layout.Row = 1; l.Layout.Column = [1 2];
+            app.W.tbl = uitable(gl,'ColumnName',{'Freq (Hz)','Band SPL (dB)','Mean att (dB)','SD att (dB)'}, ...
+                'ColumnEditable',[true true true true], ...
+                'Data',{125,102,5.3,4.6; 250,103,8.5,2.4; 500,104,15.9,4.6; 1000,95,26.0,4.3; ...
+                        2000,91,25.4,5.5; 4000,98,35.7,4.1; 8000,98,27.2,5.5});
+            app.W.tbl.Layout.Row = 2; app.W.tbl.Layout.Column = [1 2];
+            addb = uibutton(gl,'Text','+ Add row','ButtonPushedFcn',@(o,e) app.addRow(app.W.tbl,{[],[],[],[]}));
+            addb.Layout.Row = 3; addb.Layout.Column = 1;
+            b = uibutton(gl,'Text','Compute LA','ButtonPushedFcn',@(o,e) app.runHearProtBands());
+            b.Layout.Row = 3; b.Layout.Column = 2;
+            app.W.k = app.ddField(gl,4,'SD multiplier k (attenuation = mean - k*SD)', ...
+                {'1 - mean-1SD (maximum, Bies & Hansen)','0 - mean only','2 - mean-2SD'});
+            app.W.out = uitextarea(gl,'Editable','off','FontName','monospaced');
+            app.W.out.Layout.Row = 6; app.W.out.Layout.Column = [1 2];
+        end
+        function runHearProtBands(app)
+            d = app.W.tbl.Data; f=[]; Lp=[]; m=[]; s=[];
+            for i = 1:size(d,1)
+                a=d{i,1}; b=d{i,2}; c=d{i,3}; e=d{i,4};
+                if any(cellfun(@(x) isempty(x)||(isnumeric(x)&&isnan(x)), {a,b,c,e})), continue; end
+                f(end+1)=a; Lp(end+1)=b; m(end+1)=c; s(end+1)=e; %#ok<AGROW>
+            end
+            if isempty(f), app.W.out.Value = {'Enter freq, band SPL, mean attenuation, SD per row.'}; return; end
+            k = str2double(app.W.k.Value(1));
+            R = acoustics.hearingProtectorBands(f, Lp, m, s, 'k', k);
+            hdr = sprintf('%-9s %-8s %-9s %-8s %-8s','Freq','SPL','AssumAtt','L_ear','L_ear,A');
+            rows = arrayfun(@(i) sprintf('%-9g %-8g %-9.1f %-8.1f %-8.1f', ...
+                R.perBand(i,1),R.perBand(i,2),R.perBand(i,3),R.perBand(i,4),R.perBand(i,5)), ...
+                (1:size(R.perBand,1)).','UniformOutput',false).';
+            app.W.out.Value = [{ ...
+                sprintf('LA at the ears = %.2f dB(A)   (unprotected %.2f, reduction %.2f dB)', ...
+                    R.LA, R.LAunprot, R.reduction), '', hdr}, rows, {'', 'WORKING'}, R.steps];
         end
 
         % ================= LOUDNESS =================
