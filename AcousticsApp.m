@@ -1860,8 +1860,14 @@ classdef AcousticsApp < handle
             if net=='L', net='Z'; end
         end
         function v = parseCol(~, c)
-            if ischar(c), c = cellstr(c); end
-            v = str2double(c); v = v(~isnan(v)); v = v(:)';
+            % Accept numbers one-per-line OR comma/space separated on a line.
+            if ischar(c) || isstring(c), c = cellstr(c); end
+            v = [];
+            for i = 1:numel(c)
+                nums = str2double(regexp(strtrim(c{i}), '[,;\s]+', 'split'));
+                v = [v, nums(~isnan(nums))]; %#ok<AGROW>
+            end
+            v = v(:)';
         end
         function rows = parseRows(~, c, ncols)
             if ischar(c), c = cellstr(c); end
