@@ -425,14 +425,23 @@ function [parts, pre] = splitParts(q)
     ix = regexp(qc, pat, 'start');
     % A real part marker sits at a word boundary (start of string or after
     % whitespace). Drop matches glued to the previous character, e.g. the
-    % "(A)" inside "dB(A)" - that is a weighting label, not a sub-question,
-    % and splitting there would strip the front of the question into context.
+    % "(A)" inside "dB(A)" - that is a weighting label, not a sub-question.
+    % When the parts are laid out one per line, prefer markers at the START
+    % of a line: that ignores an in-text cross-reference like "referred to
+    % in (d) after ..." which would otherwise be mistaken for a new part.
     if ~isempty(ix)
-        keep = false(1, numel(ix));
+        wsKeep = false(1, numel(ix)); lineStart = false(1, numel(ix));
         for k = 1:numel(ix)
-            keep(k) = ix(k) == 1 || isspace(qc(ix(k)-1));
+            atStart = ix(k) == 1;
+            prev    = ''; if ix(k) > 1, prev = qc(ix(k)-1); end
+            wsKeep(k)    = atStart || (~isempty(prev) && isspace(prev));
+            lineStart(k) = atStart || prev == newline || prev == sprintf('\r');
         end
-        ix = ix(keep);
+        if sum(lineStart) >= 2
+            ix = ix(lineStart);      % one-per-line layout: only line-start markers
+        else
+            ix = ix(wsKeep);         % inline layout: any whitespace-preceded marker
+        end
     end
     if ~isempty(ix)
         if ix(1) == 1, pre = ""; else, pre = string(strtrim(qc(1:ix(1)-1))); end
