@@ -96,6 +96,7 @@ answer. Library functions are in `+acoustics/`.
 | **Room acoustics** | Sabine T60 (solve any term); average absorption ᾱ; room constant R; room equation; absorber ΔLp; **plant room (α-driven surface treatment, per-band Lp = Lw + 10·log₁₀(4/R), before/after coating)**; **reverberation test room (T60-driven, exact ⟨p²⟩ = 4ρc·W/R, empty vs furnished)** | `sabineT60`, `averageAbsorption`, `roomConstant`, `roomEquation`, `absorberChange`, `plantRoom`, `reverbTestRoom` |
 | **Sound power** | Background K1; environmental K2; Lw from surface SPL; free-field Lw from bands | `backgroundK1`, `environmentalK2`, `soundPowerMeasured`, `lwFromBands` |
 | **Duct → voltage** | Duct sound power → mic voltage (plane-wave cut-on check) | `ductToVoltage` |
+| **Duct → power** | Long-pipe plane wave: octave-band Lp → per-band p_rms, I, W (A=πd²/4), total Lp and total Lw | `ductBandPower` |
 | **Weighting** | A/B/C(/Z) overall level; ⅓-oct → octave band workbench; A/B/C reference table | `weightedOverall`, `bandWorkbench`, `weightingValue`, `weightingTable` |
 | **Leq / time** | Leq from levels+durations (mixed units) + SEL; discrete events; time-varying Leq + percentile LN | `leqFromLevels`, `leqFromEvents`, `percentileLevel` |
 | **Noise dose** | LAeq, dose %, OH&S max time; max time for a steady level | `noiseDose`, `maxPermissibleTime` |
@@ -103,7 +104,7 @@ answer. Library functions are in `+acoustics/`.
 | **Speech / PSIL** | SIL; required A-weighted voice level VL_A (Unit 5 Eq 5.6); Table 5.2 effort + communication verdict vs 88 dB(A) | `speechInterferenceLevel`, `voiceLevelA` |
 | **Community** | Day–night level Ldn | `dayNightLevel` |
 | **Stats / SEL** | SEL ↔ Leq; sort values into terms | `selFromLeq` |
-| **Insulation (TL)** | Mass-law TL; interface impedance & coefficients; TL from α_t; panel resonance | `massLawTL`, `interfaceImpedance`, `tlFromCoefficient`, `panelResonance` |
+| **Insulation (TL)** | Mass-law TL; interface impedance & coefficients; TL from α_t; panel resonance; resonant single-panel TL (mass+stiffness, fₙ + TL vs f) | `massLawTL`, `interfaceImpedance`, `tlFromCoefficient`, `panelResonance`, `panelTL`, `barrierInsertion` |
 | **Mufflers** | Sudden area change; expansion-chamber TL; TL/IL/NR level difference | `mufflerAreaChange`, `expansionChamberTL`, `levelDifference` |
 
 ### Speech / voice-effort reference (Unit 5)

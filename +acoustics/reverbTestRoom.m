@@ -18,11 +18,14 @@ function R = reverbTestRoom(freqs, Lw, T60empty, T60furnished, V, S, opts)
 %       V, S          room volume (m^3) and total surface (m^2)
 %   Optional: 'rhoc' (default 415 rayls), 'net' (default 'A').
 %
-%   R has fields:
-%       .freqs, .Aempty, .Afurn (1xB)
-%       .p2empty, .p2furn (1xB, Pa^2)
-%       .LpEmpty, .LpFurn (1xB, dB)
-%       .dBAempty, .dBAfurn, .reduction
+%   R has fields (all per-band vectors are 1xB):
+%       .freqs, .W
+%       .Aempty, .Afurn                absorption area (m^2)
+%       .alphaEmpty, .alphaFurn        average absorption coefficient
+%       .p2empty, .p2furn              mean-square pressure (Pa^2)
+%       .LpEmpty, .LpFurn              band SPL, unweighted (dB)
+%       .LpAempty, .LpAfurn            band SPL, weighted (dB, per 'net')
+%       .dBAempty, .dBAfurn, .reduction   overall weighted levels
 %       .steps
     arguments
         freqs        (1,:) double {mustBePositive}
@@ -34,7 +37,7 @@ function R = reverbTestRoom(freqs, Lw, T60empty, T60furnished, V, S, opts)
         opts.rhoc (1,1) double {mustBePositive} = 415
         opts.net  (1,1) char {mustBeMember(opts.net,{'A','B','C','Z'})} = 'A'
     end
-    C = constants();
+    C = acoustics.constants();
     B = numel(freqs);
     if ~isequal(numel(Lw), numel(T60empty), numel(T60furnished), B)
         error('acoustics:reverbTestRoom:size', 'All band vectors must match freqs.');
@@ -45,23 +48,41 @@ function R = reverbTestRoom(freqs, Lw, T60empty, T60furnished, V, S, opts)
     [R.Afurn,  R.p2furn,  R.LpFurn ] = state(T60furnished, W, V, S, opts.rhoc, C.PREF);
 
     R.freqs = freqs;
-    w = arrayfun(@(f) weightingValue(f, opts.net), freqs);
-    R.dBAempty = 10*log10(sum(10.^((R.LpEmpty + w)/10)));
-    R.dBAfurn  = 10*log10(sum(10.^((R.LpFurn  + w)/10)));
+    R.W = W;
+    R.alphaEmpty = R.Aempty / S;
+    R.alphaFurn  = R.Afurn  / S;
+    w = arrayfun(@(f) acoustics.weightingValue(f, opts.net), freqs);
+    R.LpAempty = R.LpEmpty + w;
+    R.LpAfurn  = R.LpFurn  + w;
+    R.dBAempty = 10*log10(sum(10.^(R.LpAempty/10)));
+    R.dBAfurn  = 10*log10(sum(10.^(R.LpAfurn /10)));
     R.reduction = R.dBAempty - R.dBAfurn;
 
     tag = 'dB'; if opts.net ~= 'Z', tag = sprintf('dB(%c)', opts.net); end
-    lines = { ...
-        'Per band: A = 0.161*V/T60, alpha = A/S, R = A/(1-alpha)', ...
-        'W = W_ref*10^(Lw/10), <p^2> = 4*rho c*W/R, Lp = 10*log10(<p^2>/p_ref^2)', ''};
-    for i = 1:B
-        lines{end+1} = sprintf('  %6g Hz: A %.2f/%.2f  <p^2> %.4g/%.4g Pa^2  Lp %.1f/%.1f dB', ...
-            freqs(i), R.Aempty(i), R.Afurn(i), R.p2empty(i), R.p2furn(i), ...
-            R.LpEmpty(i), R.LpFurn(i)); %#ok<AGROW>
-    end
-    R.steps = [lines, { '', ...
-        sprintf('Overall empty = %.1f %s · furnished = %.1f %s · reduction = %.1f %s', ...
-            R.dBAempty, tag, R.dBAfurn, tag, R.reduction, tag)}];
+    R.steps = { ...
+        'REVERBERATION TEST ROOM (per octave band)', ...
+        'A = 0.161*V/T60 · alpha = A/S · R = A/(1-alpha)', ...
+        'W = W_ref*10^(Lw/10) · <p^2> = 4*rho c*W/R · Lp = 10*log10(<p^2>/p_ref^2)', ...
+        '', ...
+        ['(a) A, empty room (m^2):        ' rowStr(freqs, R.Aempty,     '%.3f')], ...
+        ['(b) A, room + furniture (m^2):  ' rowStr(freqs, R.Afurn,      '%.3f')], ...
+        ['(c) alpha-bar, empty:           ' rowStr(freqs, R.alphaEmpty, '%.4f')], ...
+        ['(d) alpha-bar, furnished:       ' rowStr(freqs, R.alphaFurn,  '%.4f')], ...
+        ['(e) sound power W (W):          ' rowStr(freqs, R.W,          '%.4g')], ...
+        ['(f) <p^2>, empty (Pa^2):        ' rowStr(freqs, R.p2empty,    '%.4g')], ...
+        ['(g) <p^2>, furnished (Pa^2):    ' rowStr(freqs, R.p2furn,     '%.4g')], ...
+        ['(h) Lp, empty (' tag '):           ' rowStr(freqs, R.LpAempty, '%.2f')], ...
+        ['(i) Lp, furnished (' tag '):       ' rowStr(freqs, R.LpAfurn,  '%.2f')], ...
+        '', ...
+        sprintf('(j) Overall empty      = %.1f %s', R.dBAempty, tag), ...
+        sprintf('(k) Overall furnished  = %.1f %s', R.dBAfurn, tag), ...
+        sprintf('(l) Reduction          = %.1f %s', R.reduction, tag)};
+end
+
+function s = rowStr(freqs, vals, fmt)
+    parts = arrayfun(@(j) sprintf(['%g Hz ' fmt], freqs(j), vals(j)), ...
+        1:numel(freqs), 'UniformOutput', false);
+    s = strjoin(parts, '   ');
 end
 
 function [A, p2, Lp] = state(T60, W, V, S, rhoc, pref)

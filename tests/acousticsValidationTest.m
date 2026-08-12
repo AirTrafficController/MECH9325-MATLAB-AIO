@@ -21,6 +21,74 @@ function testOnePascalIs94dB(t)
     verifyEqual(t, round(R.Lp), 94);
 end
 
+function testDoublePanelTL(t)
+    % Two 16 kg/m^2 panels in series (composite barrier): TL = TL1 + TL2
+    % TL = 43.4 / 62.4 / 83.4 dB at 100/300/1000 Hz
+    R = acoustics.doublePanelTL([100 300 1000], 'masses', [16 16]);
+    verifyEqual(t, R.TL, [43.36 62.45 83.36], 'AbsTol', 0.02);
+    % TL supplied directly should just add
+    R2 = acoustics.doublePanelTL('TL', [21.68 21.68]);
+    verifyEqual(t, R2.TL, 43.36, 'AbsTol', 0.01);
+end
+
+function testMassLawGluedLayers(t)
+    % Two glued 10 kg/m^2 timber panels -> M=20; TL at 100/300/1000 Hz
+    R100 = acoustics.massLawTL(100, 'M', [10 10]);
+    verifyEqual(t, R100.M, 20, 'AbsTol', 1e-9);
+    verifyEqual(t, R100.TL, 23.62, 'AbsTol', 0.01);
+    verifyEqual(t, acoustics.massLawTL(300,  'M', [10 10]).TL, 33.16, 'AbsTol', 0.01);
+    verifyEqual(t, acoustics.massLawTL(1000, 'M', [10 10]).TL, 43.62, 'AbsTol', 0.01);
+    % glued layers equal a single leaf of the summed mass
+    verifyEqual(t, R100.TL, acoustics.massLawTL(100, 'M', 20).TL, 'AbsTol', 1e-9);
+end
+
+function testSpeedOfSoundInverse(t)
+    % Impulse crosses 8 m in 20 ms -> c=400 m/s -> hot air ~125 degC
+    R = acoustics.speedOfSoundTemp('distance', 8, 'time', 0.020);
+    verifyEqual(t, R.c,  400,   'AbsTol', 1e-9);
+    verifyEqual(t, R.Tc, 125.0, 'AbsTol', 0.1);
+    % round trip: forward at that temperature returns the same speed
+    verifyEqual(t, acoustics.speedOfSoundTemp(R.Tc).c, 400, 'AbsTol', 0.05);
+end
+
+function testAirWaterInterface(t)
+    % 17 Pa in air onto water: pTrans=33.99 Pa, uTrans=2.297e-5 m/s, alpha=0.00112
+    R = acoustics.interfaceImpedance(1.21*343, 1000*1480, 'p0', 17);
+    verifyEqual(t, R.pTrans, 33.9905, 'AbsTol', 0.01);
+    verifyEqual(t, R.uTrans, 2.29665e-5, 'AbsTol', 1e-8);
+    verifyEqual(t, R.alphaT, 0.00112107, 'AbsTol', 1e-7);
+end
+
+function testAirWaterInterfaceFromSPL(t)
+    % 107 dB in air onto water (z2=1.5e6): peak 6.33 Pa, interface 12.66,
+    % uTrans 8.44e-6 m/s, alpha 0.00111
+    R = acoustics.interfaceImpedance(1.21*343, 1000*1500, 'Lp', 107);
+    verifyEqual(t, R.pIncident,  6.332,   'AbsTol', 0.01);   % (a) peak
+    verifyEqual(t, R.pInterface, 12.66,   'AbsTol', 0.01);   % (b)=(c)
+    verifyEqual(t, R.uTrans,     8.44e-6, 'AbsTol', 1e-8);   % (d)
+    verifyEqual(t, R.alphaT,     0.001106,'AbsTol', 1e-6);   % (e)
+end
+
+function testParticleMotionFullChain(t)
+    % Plane wave, P_peak = 1.5 Pa, f = 120 Hz, rho c = 415:
+    % I=0.002711, u=0.003614, xi=4.793e-6, p_rms=1.061, Lp=94.49
+    R = acoustics.particleMotion(1.5, 120, 'rhoc', 415);
+    verifyEqual(t, R.I,    0.002711, 'AbsTol', 1e-6);
+    verifyEqual(t, R.u,    0.003614, 'AbsTol', 1e-6);
+    verifyEqual(t, R.xi,   4.793e-6, 'AbsTol', 1e-9);
+    verifyEqual(t, R.prms, 1.0607,   'AbsTol', 1e-3);
+    verifyEqual(t, R.Lp,   94.49,    'AbsTol', 0.01);
+end
+
+function testPlaneWaveAirWater(t)
+    % u = 0.11 m/s plane wave: SPL in air (127.17 dB) and water (224.35 dB)
+    Ra = acoustics.planeWaveLevel(0.11);                                  % air defaults
+    verifyEqual(t, Ra.Lp, 127.17, 'AbsTol', 0.01);
+    Rw = acoustics.planeWaveLevel(0.11, 'rho',1000, 'c',1500, 'pref',1e-6);
+    verifyEqual(t, Rw.p, 165000, 'AbsTol', 1e-6);
+    verifyEqual(t, Rw.Lp, 224.35, 'AbsTol', 0.01);
+end
+
 function testHalfWattIs117dB(t)
     % 0.5 W -> 117 dB Lw (re 1e-12 W)
     R = acoustics.powerLevel('W', 0.5);
@@ -86,6 +154,24 @@ function testSonePhonRoundTrip(t)
 end
 
 % ---- insulation: plywood mass-law TL = 21 dB @ 1 kHz --------------------
+
+function testBarrierInsertionTunnel(t)
+    % Tunnel spectrum + 25 mm foam disc (rho 320). Overall dB(A) before/after.
+    R = acoustics.barrierInsertion([250 500 1000 2000], [104 109 106 110], ...
+        'density', 320, 'thickness_mm', 25);
+    verifyEqual(t, R.before, 113.3, 'AbsTol', 0.1);
+    verifyEqual(t, R.after,  78.8, 'AbsTol', 0.1);
+end
+
+function testPanelTLskylight(t)
+    % Resonant single panel (glass skylight), marked-correct answers:
+    % 197x98 mm, 14 mm, 1045 N -> 0.8 mm. fn=221.3, TL=42.3 (stiffness) / 48.5 (mass).
+    R = acoustics.panelTL([100 1000], 1045, 0.8e-3, 0.197, 0.098, 0.014, 2500);
+    verifyEqual(t, R.fn, 221.3, 'AbsTol', 0.1);
+    verifyEqual(t, R.surfaceMass, 35, 'AbsTol', 1e-9);     % rho*thickness
+    verifyEqual(t, R.TL(1), 42.3, 'AbsTol', 0.1);          % 100 Hz (below fn, stiffness)
+    verifyEqual(t, R.TL(2), 48.5, 'AbsTol', 0.1);          % 1000 Hz (above fn, mass law)
+end
 
 function testPlywoodMassLawTLis21(t)
     % Plywood 3 mm at 500 kg/m^3 -> M = 1.5 kg/m^2, TL = 20log10(Mf)-42.4
@@ -164,6 +250,76 @@ function testRadiatedPowerFromPressure(t)
     verifyEqual(t, R.W, 37.85, 'AbsTol', 0.02);
 end
 
+function testHearingProtectorBands(t)
+    % NAL EML-45 muffs, mean-1SD ("maximum") -> LA = 93.0 dB(A)
+    f  = [125 250 500 1000 2000 4000 8000];
+    Lp = [102 103 104 95 91 98 98];
+    m  = [5.3 8.5 15.9 26.0 25.4 35.7 27.2];
+    s  = [4.6 2.4 4.6 4.3 5.5 4.1 5.5];
+    R = acoustics.hearingProtectorBands(f, Lp, m, s, 'k', 1);
+    verifyEqual(t, R.LA, 93.0, 'AbsTol', 0.1);
+    % mean only (k=0) is lower; mean-2SD (k=2) is higher
+    verifyLessThan(t, acoustics.hearingProtectorBands(f,Lp,m,s,'k',0).LA, R.LA);
+    verifyGreaterThan(t, acoustics.hearingProtectorBands(f,Lp,m,s,'k',2).LA, R.LA);
+end
+
+function testRadiatedPowerFromPower(t)
+    % W = 1.04 W at r = 0.17 m, Q = 1 -> I = 2.864, p_rms = 34.47 Pa,
+    % SPL = 124.73 dB, SIL = 124.57 dB (rho c = 415)
+    R = acoustics.radiatedPower(0.17, 'W', 1.04, 'Q', 1);
+    verifyEqual(t, R.I,    2.864, 'AbsTol', 0.01);
+    verifyEqual(t, R.prms, 34.47, 'AbsTol', 0.05);
+    verifyEqual(t, R.spl,  124.73, 'AbsTol', 0.1);
+    verifyEqual(t, R.sil,  124.57, 'AbsTol', 0.1);
+end
+
+function testUnitConvert(t)
+    verifyEqual(t, acoustics.convertUnit(2e-5,'Pa','uPa').value, 20, 'AbsTol', 1e-9);
+    verifyEqual(t, acoustics.convertUnit(1e-12,'W','pW').value, 1, 'AbsTol', 1e-12);
+    verifyEqual(t, acoustics.convertUnit(1,'atm','kPa').value, 101.325, 'AbsTol', 1e-6);
+    verifyEqual(t, acoustics.convertUnit(20,'C','K').value, 293.15, 'AbsTol', 1e-9);
+    verifyEqual(t, acoustics.convertUnit(257.25,'Hz','rad/s').value, 2*pi*257.25, 'AbsTol', 1e-6);
+    verifyEqual(t, acoustics.convertUnit(14,'mm','m').value, 0.014, 'AbsTol', 1e-12);
+end
+
+function testPipeClosedClosed(t)
+    % 2 m pipe closed at both ends: omega_n = 2 pi n c/(2L); node at centre.
+    R = acoustics.pipeModes(2, 'c', 343, 'n', 3, 'ends', "closed-closed");
+    verifyEqual(t, R.omega, [538.78 1077.57 1616.35], 'AbsTol', 0.1);
+    verifyEqual(t, R.nodesFundamental, 1, 'AbsTol', 1e-9);
+end
+
+function testLwFromSurfaces(t)
+    % A-weighted Lw from six 2 m^2 enveloping faces -> 100.8 dB(A).
+    R = acoustics.soundPowerFromSurfaces([89 87 80 95 90 87], 2);
+    verifyEqual(t, R.totalArea, 12, 'AbsTol', 1e-9);
+    verifyEqual(t, R.Lw, 100.83, 'AbsTol', 0.05);
+end
+
+function testHearingProtectorSLC80(t)
+    % AS/NZS 1269 SLC80: protected LAeq = LCeq - SLC80.
+    R = acoustics.hearingProtector(99.721, 27);
+    verifyEqual(t, R.protectedLAeq, 72.721, 'AbsTol', 0.01);
+end
+
+function testPowerIntoMediumLake(t)
+    % 80 mm pipe into a lake, 153 dB at surface, anechoic in water.
+    R = acoustics.powerIntoMedium(153, 0.080, 'rho', 1000, 'c', 1480);
+    verifyEqual(t, R.prms, 893.37, 'AbsTol', 0.5);
+    verifyEqual(t, R.W, 2.711e-3, 'AbsTol', 1e-5);
+end
+
+function testDuctBandPowerSpeaker(t)
+    % 86 mm pipe, long (plane waves). Octave-band Lp -> prms, I, W, totals.
+    R = acoustics.ductBandPower([125 250 500 1000], [106 105 105 94], 0.086, ...
+        'rho', 1.21, 'c', 343);
+    verifyEqual(t, R.prms, [3.991 3.557 3.557 1.002], 'AbsTol', 0.002);
+    verifyEqual(t, R.I,    [0.03837 0.03048 0.03048 0.002421], 'AbsTol', 0.0002);
+    verifyEqual(t, R.W,    [2.229e-4 1.770e-4 1.770e-4 1.406e-5], 'AbsTol', 2e-7);
+    verifyEqual(t, R.LpTotal, 110.24, 'AbsTol', 0.02);
+    verifyEqual(t, R.LwTotal, 87.72, 'AbsTol', 0.02);
+end
+
 % ---- room calculators: formula-level checks -----------------------------
 % (The exact web-app "plant room" and "reverberation test room" example
 % datasets live in data.js; those regression tests are added once the input
@@ -185,4 +341,26 @@ function testReverbTestRoomSingleBand(t)
     verifyEqual(t, R.p2empty(1), 0.9481, 'AbsTol', 0.001);
     verifyEqual(t, R.LpEmpty(1), 93.7477, 'AbsTol', 0.01);
     verifyEqual(t, R.reduction, 3.4082, 'AbsTol', 0.01);
+end
+
+function testReverbTestRoomFurnitureExample(t)
+    % Web-app worked example: V = 207 m^3, S = 220 m^2, rho c = 415.
+    % Octave bands 250/500/1000 Hz; reference source Lw and empty/furnished T60.
+    f    = [250   500   1000];
+    Lw   = [81.4  82.0  88.2];
+    Te   = [8.2   7.5   6.4];    % empty T60 (s)
+    Tf   = [6.5   5.9   4.8];    % furnished T60 (s)
+    R = acoustics.reverbTestRoom(f, Lw, Te, Tf, 207, 220, 'rhoc', 415);
+    % (a) empty absorption area
+    verifyEqual(t, R.Aempty, [4.064 4.444 5.207], 'AbsTol', 0.01);
+    % (b) furnished absorption area
+    verifyEqual(t, R.Afurn,  [5.127 5.649 6.943], 'AbsTol', 0.01);
+    % (f) empty mean-square pressures (Pa^2)
+    verifyEqual(t, R.p2empty, [0.0553 0.0580 0.2056], 'AbsTol', 0.001);
+    % (g) furnished mean-square pressures (Pa^2)
+    verifyEqual(t, R.p2furn,  [0.0436 0.0454 0.1530], 'AbsTol', 0.001);
+    % (j),(k),(l) overall A-weighted levels and reduction
+    verifyEqual(t, R.dBAempty, 87.8, 'AbsTol', 0.1);
+    verifyEqual(t, R.dBAfurn,  86.5, 'AbsTol', 0.1);
+    verifyEqual(t, R.reduction, 1.3, 'AbsTol', 0.1);
 end

@@ -38,7 +38,7 @@ function R = plantRoom(freqs, machineLw, alphaBase, alphaCoat, Scoat, S, opts)
         S         (1,1) double {mustBePositive}
         opts.net  (1,1) char {mustBeMember(opts.net,{'A','B','C','Z'})} = 'A'
     end
-    C = constants();
+    C = acoustics.constants();
     B = numel(freqs);
     if size(machineLw,1) ~= B
         error('acoustics:plantRoom:rows', 'machineLw must have one row per band.');
@@ -61,7 +61,7 @@ function R = plantRoom(freqs, machineLw, alphaBase, alphaCoat, Scoat, S, opts)
     R.LpBefore = R.Lw + 10*log10(4 ./ R.Rbefore);
     R.LpAfter  = R.Lw + 10*log10(4 ./ R.Rafter);
 
-    w = arrayfun(@(f) weightingValue(f, opts.net), freqs);
+    w = arrayfun(@(f) acoustics.weightingValue(f, opts.net), freqs);
     R.dBAbefore = 10*log10(sum(10.^((R.LpBefore + w)/10)));
     R.dBAafter  = 10*log10(sum(10.^((R.LpAfter  + w)/10)));
     R.reduction = R.dBAbefore - R.dBAafter;

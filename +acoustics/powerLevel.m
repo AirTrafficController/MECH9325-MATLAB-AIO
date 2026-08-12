@@ -11,7 +11,7 @@ function R = powerLevel(opts)
         opts.W  double {mustBePositiveOrNaN(opts.W)} = NaN
         opts.Lw double = NaN
     end
-    C = constants();
+    C = acoustics.constants();
     hasW  = ~isnan(opts.W);
     hasLw = ~isnan(opts.Lw);
     if hasW == hasLw
