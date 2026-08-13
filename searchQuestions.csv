@@ -9,7 +9,7 @@ Question,ExpectedTool
 "An impulse takes 20 ms to travel 8 m between two probe microphones in a hot pipe. Estimate the air temperature.",Speed of sound (temperature)
 "A plane wave has a peak pressure amplitude of 1.5 Pa at 120 Hz. Find the intensity particle velocity and displacement.",Particle motion
 "An operator wears ear muffs with an SLC80 of 27 dB. Find the protected LAeq over the working day.",Hearing protector (SLC80)
-"A pipe closed at one end is driven at the open end by a piston. Find the first natural frequencies and the acoustic pressure on the piston.",Pipe modes
+"A pipe closed at one end is driven at the open end by a piston. Find the first natural frequencies and the acoustic pressure on the piston.",Pipe natural frequencies (ends)
 "A reverberation test room mean square pressure is measured empty and furnished. Find the T60 and reduction.",Reverberation test room
 "Sound power of a machine from octave band SPLs measured over an enveloping cuboid surface. Find Lw.",Lw from enveloping-surface SPLs
 "A pipe radiates sound into a lake. Find the acoustic power transmitted into the water.",Power into a medium (pipe/interface)
@@ -36,3 +36,4 @@ Question,ExpectedTool
 "At a location the unweighted sound pressure level of a 500 Hz pure tone alarm is 80 dB re 2x10-5 Pa. a) Estimate the loudness level in phons. b) Determine the loudness in sones. c) Determine the preferred speech interference level. d) Could two people 1 m apart communicate and with what voice effort?",Phon -> sone
 "Estimate the maximum A-weighted sound pressure level at the ears of persons wearing correctly adjusted ear muffs given the octave band mean and standard deviation attenuation data and the environment octave band sound pressure levels.",Hearing protector (octave-band mean/SD)
 "For a plant room containing three electric motors, use the octave band sound power levels and the concrete surface absorption coefficients to find the reverberant field sound pressure levels, then the reduction after the ceiling is coated with sound absorbing material.",Plant room
+"A pipe 2 m long with an inside diameter of 21 mm is closed at both ends. Find the first three natural frequencies of the pipe and the location along the pipe of the pressure node at the lowest natural frequency.",Pipe natural frequencies (ends)
