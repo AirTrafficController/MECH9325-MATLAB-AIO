@@ -3,7 +3,7 @@ SPL <-> pressure,sound pressure level spl pascal pa rms pressure decibel convert
 Sound power level Lw,sound power watt w lw level reference convert
 Sound intensity level LI,sound intensity level li watt per square metre pressure rhoc convert
 Radiated power (point source),radiated power point source spherical sphere hemisphere free field free space watt watts radiates radiating single frequency distance directivity q rms sound pressure intensity spl lw li siren tone peak amplitude produced acoustic estimate at distance
-Duct band power (pipe),duct pipe plane wave octave band spl intensity power cross section area total lw speaker reflected
+Duct band power (pipe),duct pipe plane wave octave band bands spl rms root mean square values acoustic pressures pressure intensity radiated acoustic power cross section area total lw lp speaker reflected no reflections sufficiently long microphone point
 Peak <-> RMS & combine tones,peak rms amplitude combine tones quadrature pressures total pressure
 PSD -> RMS pressure,power spectral density psd pa2 pahz varies varying linearly linear ramp slope trapezoid trapezium area under curve integrate integral band bandwidth frequency limits between lower upper mean square root rms value sound pressure spectrum level
 Combine levels,combine add sound levels total energy sum sources decibel lp overall octave band linear unweighted
