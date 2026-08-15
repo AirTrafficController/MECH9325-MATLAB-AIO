@@ -28,6 +28,7 @@ Room equation Lp from Lw,room equation direct reverberant field distance directi
 Absorber change,reverberant reverberation time sabine room absorption coefficient absorbing panels suspended material both sides exposed office ceiling add added adding removed removal removing without present increase decrease change predict consultant treatment architect
 Plant room,plant room machines motors coating ceiling absorption reverberant treatment reduction band
 Reverberation test room,reverberation test room t60 mean square pressure furniture empty furnished absorption disk
+Reverb-room Lw from Lp,reverberation reverb room source sound power lw from lp spl octave band bands t60 volume iso 3741 diffuse field measured overall lwa a-weighted claim manufacturer sabine absorption area equivalent
 Background K1,background correction k1 source measurement mean spl
 Environmental K2,environmental correction k2 room surface absorption area
 Sound power from surface SPL,sound power from surface spl measurement k1 k2 area lw
