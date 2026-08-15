@@ -8,7 +8,7 @@ Peak <-> RMS & combine tones,peak rms amplitude combine tones quadrature pressur
 PSD -> RMS pressure,power spectral density psd pa2 pahz varies varying linearly linear ramp slope trapezoid trapezium area under curve integrate integral band bandwidth frequency limits between lower upper mean square root rms value sound pressure spectrum level
 Combine levels,combine add sound levels total energy sum sources decibel lp overall octave band linear unweighted generated together highway traffic road train aircraft both and
 N identical sources,identical sources number combine total same six all bikes motorbikes motorcycles machines engines units nominally equal
-Increase from more sources,increase added sources level rise more
+Increase from more sources,increase added sources level rise more additional brought doubling double twice new sound pressure level dogs animals barking compound
 Larger signal error,error larger signal ignore smaller only
 Max sources under limit,maximum permitted allowed sources machines limit criterion how many could be used night residential factory under number exceed noise
 Subtract background,subtract background remove one single only alone running individual source total measured contribution due bike motorbike motorcycle machine engine correction ambient on off switched turned point certain
@@ -28,6 +28,7 @@ Room equation Lp from Lw,room equation direct reverberant field distance directi
 Absorber change,reverberant reverberation time sabine room absorption coefficient absorbing panels suspended material both sides exposed office ceiling add added adding removed removal removing without present increase decrease change predict consultant treatment architect
 Plant room,plant room machines motors coating ceiling absorption reverberant treatment reduction band
 Reverberation test room,reverberation test room t60 mean square pressure furniture empty furnished absorption disk
+Reverb-room Lw from Lp,reverberation reverb room source sound power lw from lp spl octave band bands t60 volume iso 3741 diffuse field measured overall lwa a-weighted claim manufacturer sabine absorption area equivalent
 Background K1,background correction k1 source measurement mean spl
 Environmental K2,environmental correction k2 room surface absorption area
 Sound power from surface SPL,sound power from surface spl measurement k1 k2 area lw
