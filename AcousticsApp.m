@@ -123,6 +123,7 @@ classdef AcousticsApp < handle
             c(end+1,:) = {'Room: reverberant change (add/remove panels)','reverberant change add remove panels absorber suspended office treatment band', @app.buildReverb};
             c(end+1,:) = {'Room: plant room (surface treatment)','plant room machine motor coat ceiling absorption alpha reverberant field surface treatment reduction dba band', @app.buildPlant};
             c(end+1,:) = {'Room: reverberation test room (mean-square p)','reverberation test room t60 mean square pressure empty furnished absorption exact rhoc reduction dba band', @app.buildRevRoom};
+            c(end+1,:) = {'Room: reverb-room Lw from Lp (ISO 3741)','reverberation reverb room source sound power lw from lp spl octave band bands t60 volume iso 3741 diffuse field measured overall lwa a-weighted claim manufacturer', @app.buildRevLwLp};
 
             c(end+1,:) = {'Power: background correction K1','sound power k1 background correction mean spl', @app.buildK1};
             c(end+1,:) = {'Power: environmental correction K2','sound power k2 environmental correction absorption surface', @app.buildK2};
@@ -959,6 +960,44 @@ classdef AcousticsApp < handle
             end
             app.W.out.Value=[{ sprintf('Empty = %.1f dB(A) · Furnished = %.1f dB(A) · Reduction = %.1f dB(A)', ...
                 R.dBAempty, R.dBAfurn, R.reduction), '', 'WORKING' }, R.steps];
+        end
+
+        function buildRevLwLp(app)
+            gl = uigridlayout(app.Content,[5 2]);
+            gl.RowHeight = {32,'1x',44,32,150}; gl.ColumnWidth = {200,'1x'};
+            sub = uigridlayout(gl,[1 4]); sub.Layout.Row=1; sub.Layout.Column=[1 2];
+            sub.Padding=[0 0 0 0]; sub.ColumnWidth={90,'1x',150,'1x'};
+            uilabel(sub,'Text','V (m^3)'); app.W.V=uieditfield(sub,'numeric','Value',250);
+            uilabel(sub,'Text','T60 default (s)'); app.W.Tdef=uieditfield(sub,'numeric','Value',2.0);
+            app.W.tbl=uitable(gl,'ColumnName',{'Freq (Hz)','Lp (dB)','T60 (s, optional)'}, ...
+                'ColumnEditable',[true true true], ...
+                'Data',{63,70,[]; 125,74,[]; 250,78,[]; 500,80,[]; 1000,82,[]; 2000,79,[]; 4000,75,[]});
+            app.W.tbl.Layout.Row=2; app.W.tbl.Layout.Column=[1 2];
+            app.note(gl,3,'A=0.161V/T60, Lw = Lp + 10 log10(V/T60) - 13.94 (ISO 3741 simplified). Leave T60 blank to use the default.');
+            b=uibutton(gl,'Text','Compute','ButtonPushedFcn',@(o,e) app.runRevLwLp());
+            b.Layout.Row=4; b.Layout.Column=[1 2];
+            app.W.out=uitextarea(gl,'Editable','off','FontName','monospaced');
+            app.W.out.Layout.Row=5; app.W.out.Layout.Column=[1 2];
+        end
+        function runRevLwLp(app)
+            V=app.W.V.Value; Tdef=app.W.Tdef.Value;
+            if ~(V>0&&Tdef>0), app.W.out.Value={'V and default T60 must be > 0.'}; return; end
+            d=app.W.tbl.Data; f=[]; Lp=[]; T=[];
+            for i=1:size(d,1)
+                fq=d{i,1}; lp=d{i,2}; t=d{i,3};
+                if isempty(fq)||(isnumeric(fq)&&isnan(fq)), continue; end
+                if isempty(lp)||(isnumeric(lp)&&isnan(lp)), continue; end
+                if isempty(t)||(isnumeric(t)&&isnan(t)), t=Tdef; end
+                f(end+1)=fq; Lp(end+1)=lp; T(end+1)=t; %#ok<AGROW>
+            end
+            if isempty(f), app.W.out.Value={'Enter at least one band (Freq and Lp).'}; return; end
+            try
+                R=acoustics.reverbRoomLwFromLp(f, Lp, T, V, 'net','A');
+            catch me
+                app.W.out.Value={me.message}; return;
+            end
+            app.W.out.Value=[{ sprintf('Overall Lw = %.1f dB   ·   Overall LwA = %.1f dB(A)', ...
+                R.LwOverall, R.LwAOverall), '', 'WORKING' }, R.steps];
         end
 
         % ================= SOUND POWER =================
