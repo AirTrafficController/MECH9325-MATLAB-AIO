@@ -470,19 +470,29 @@ classdef AcousticsApp < handle
         end
 
         function buildIncrease(app)
-            gl = app.form(5);
-            app.W.n1  = app.numField(gl,1,'Initial number N1',47);
-            app.W.L1  = app.numField(gl,2,'Measured level L1 (dB)',66);
-            app.W.add = app.numField(gl,3,'Sources added',7);
-            app.goButton(gl,4,@(o,e) app.runIncrease());
-            app.W.out = app.resultBox(gl,5);
+            gl = app.form(6);
+            app.W.mode = app.ddField(gl,1,'Mode', ...
+                {'Forward: know N added -> find new Lp','Reverse: know new Lp -> find N added'});
+            app.W.n1  = app.numField(gl,2,'Initial number N1',75);
+            app.W.L1  = app.numField(gl,3,'Measured level L1 (dB)',64);
+            app.W.add = app.numField(gl,4,'Sources added (forward) OR new Lp dB (reverse)',75);
+            app.goButton(gl,5,@(o,e) app.runIncrease());
+            app.W.out = app.resultBox(gl,6);
         end
         function runIncrease(app)
-            n1=app.W.n1.Value; add=app.W.add.Value;
-            if ~(n1>0) || ~(n1+add>0), app.W.out.Value = {'Counts must be positive.'}; return; end
-            R = acoustics.increaseFromSources(n1, app.W.L1.Value, add);
-            app.W.out.Value = [{ sprintf('Increase dL = %.3f dB · New level = %.3f dB', ...
-                R.delta, R.newLevel), '', 'WORKING' }, R.steps];
+            n1=app.W.n1.Value; v=app.W.add.Value; L1=app.W.L1.Value;
+            if ~(n1>0), app.W.out.Value = {'N1 must be positive.'}; return; end
+            try
+                if startsWith(app.W.mode.Value, 'Forward')
+                    R = acoustics.increaseFromSources(n1, L1, v);
+                else
+                    R = acoustics.increaseFromSources(n1, L1, [], v);
+                end
+            catch me
+                app.W.out.Value = {me.message}; return;
+            end
+            app.W.out.Value = [{ sprintf('N2 = %.2f  ·  added = %.2f  ·  dL = %.3f dB  ·  Lp_new = %.3f dB', ...
+                R.N2, R.added, R.delta, R.newLevel), '', 'WORKING' }, R.steps];
         end
 
         function buildLargerError(app)
